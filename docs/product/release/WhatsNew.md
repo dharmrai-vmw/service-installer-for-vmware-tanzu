@@ -27,7 +27,7 @@
 - Make targets are modularised into independently deployable components
 - Tarballs containing all the dependencies are made available to enable users to easily transfer all the required binaries to airgap environment
   - `service-installer-for-AWS-Tanzu-1.3.tar.gz` - Tarball containing all the automation scripts and deployment dependencies for non-airgap compliant and non-compliant deployments.
-  - `service-installer-for-AWS-Tanzu-with-Dependency-1.3.tar.gz` - Tarball containing all the Tanzu Kubernetes Grid / Tanzu Kubernetes releases (TKR) FIPS binaries, Harbor, deployment dependencies, and automation scripts, to address following deployment usecases for airgap deployment
+  - `service-installer-for-AWS-Tanzu-with-Dependency-1.3.tar.gz` - Tarball containing all the Tanzu Kubernetes Grid / Tanzu Kubernetes releases (TKR) FIPS binaries, Harbor, deployment dependencies, and automation scripts, to address the following use cases for air-gapped deployment:
 
       - Automated Federal compliant deployment
       - Manual deployment (in case user wants to deploy by following the reference architecture and deployment guide)
@@ -70,10 +70,11 @@
 ## Known Issues
 
 - Tanzu Kubernetes Grid Service proxy deployment is not supported in this release.
-- Tanzu Kubernetes Grid management cluster creation with proxy is failing with unable to update no_proxy config on kube-api server. This is not a SIVT issue.
+- Tanzu Kubernetes Grid management cluster creation with proxy is failing with unable to update no_proxy config on kube-api server. This is not an SIVT issue.
 - TMC integration of management and workload clusters fails for AWS non air-gapped compliant deployment, due to a known issue in the TMC API.
 - Prometheus deployment fails if SaaS is enabled in non-airgap AWS deployment.
-- Harbor deployment fails both with and without SaaS in multi workload cluster configurations in non-airgap AWS deployment.
+- Harbor deployment fails both with and without SaaS in multi workload cluster configurations in non-airgapped AWS deployment.
+- Tanzu Kubernetes Grid proxy deployment fails if a space is present in the no-proxy comma-separated list. Ensure that there is no space or newline character added before or after a comma in the no-proxy comma-separated list.
 - In case you are using proxy with self-signed or custom CA certificate, SIVT fails to pull the kind image while deploying Tanzu Kubernetes Grid management cluster in a vSphere VDS environment.</br>
    
    **Resolution:** Before initiating the deployment with SIVT, perform the following steps:
