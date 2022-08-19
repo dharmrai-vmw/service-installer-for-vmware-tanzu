@@ -33,7 +33,7 @@
         ```
 - TKG deployment with NSX-t networking fails with "Failed to configure vcf list index out of range". 
    **Resolution:** This is happening only when we disable the shared service cluster in UI/config file and proceed with mgmt/workload cluster deployment.
-   If the shared service cluster is enabled and all the configuraiton details are provided, then deployment proceeds.
+   If the shared service cluster is enabled and all the configuration details are provided, then deployment proceeds.
 
 ## Download
 
