@@ -210,8 +210,8 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     The installer resolves the prerequisites for extension deployments. For example: Grafana needs cert-manager, Contour, and Prometheus. The scripts install cert-manager, Contour, and Prometheus before Grafana installation if `GRAFANA_DEPLOYMENT` is set to `true`.
 
     **Known Issues with Extensions:**
-    1. Prometheus deployment fails if SaaS is enabled.
-    2. Harbor deployment fails both with and without SaaS in multi workload cluster configurations.
+    - Prometheus deployment fails if SaaS is enabled.
+    - Harbor deployment fails both with and without SaaS in multi workload cluster configurations.
 
 1. Enable Pinniped on management and workload clusters.
     
@@ -366,13 +366,13 @@ The following diagram depicts single VPC and associated networking created by th
 ### AWS IAM Components Created by cf
 
 The installer creates IAM resources by dividing them into two CloudFormation stacks.
-* Tanzu Kubernetes Grid (TKG) Stack(tanzu-cloud-formation-iamtemplate): Creates IAM resources (role, policies and instance profiles) needed by Tanzu cluster deployment.
-* Service Installer for VMware Tanzu (SIVT) Stack(sivt-cloud-formation-iamtemplate): Creates IAM resources (role, policies and instance profiles) needed for automation code for further deployment.
+* Tanzu Kubernetes Grid (TKG) Stack (tanzu-cloud-formation-iamtemplate): Creates IAM resources (role, policies and instance profiles) needed by Tanzu cluster deployment.
+* Service Installer for VMware Tanzu (SIVT) Stack (sivt-cloud-formation-iamtemplate): Creates IAM resources (role, policies and instance profiles) needed for automation code for further deployment.
 
 
 The `make cf` command creates these stacks one by one starting with the TKG stack. The installer checks for IAM resources and CloudFormation. If any of the resources exist, you get an error message. You can ignore the error message if the resources are already set correctly as mentioned in the following templates.
 
-**Note:** For more information on role and their detailed actions, see the [tanzu-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/tanzu-cloud-formation-iamtemplate.yaml) [sivt-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/sivt-cloud-formation-iamtemplate.yaml) file.
+**Note:** For more information on role and their detailed actions, see the [tanzu-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/tanzu-cloud-formation-iamtemplate.yaml) and [sivt-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/sivt-cloud-formation-iamtemplate.yaml) files.
 
 |Profile|Roles|Policies|Stack type |
 |-------|-----|--------|------------|
@@ -382,7 +382,7 @@ The `make cf` command creates these stacks one by one starting with the TKG stac
 |tkg-s3-viewer|tkg-s3-role|tkg-airgapped-bucket| SIVT
 |tkg-bootstrap|tkg-bootstrap|tkg-airgapped-bucket<br/>nodes.tkg.cloud.vmware.com<br/>controllers.tkg.cloud.vmware.com<br/>control-plane.tkg.cloud.vmware.com| SIVT
 
-**Note:** SIVT IAM resources (role, policies and instance profiles) are prepended with the AWS Region specified by the user. For example, us-east-1-tkg-bootstrap 
+**Note:** SIVT IAM resources (role, policies and instance profiles) are prepended with the AWS Region specified by the user. For example, `us-east-1-tkg-bootstrap`
 
 ## Customizing Tanzu Kubernetes Grid
 
