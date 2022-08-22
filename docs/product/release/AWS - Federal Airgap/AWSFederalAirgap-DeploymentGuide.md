@@ -55,7 +55,7 @@ Before deploying Tanzu Kubernetes Grid on AWS using Service Installer for VMware
 
 - The required binaries are uploaded to the S3 bucket.
   
-    1. Download the TAR file `service-installer-for-AWS-Tanzu-with-Dependency-1.3.1.tar.gz` from the [VMware Marketplace](https://marketplace.cloud.vmware.com/services/details/service-installer-for-vmware-tanzu-1?slug=true). It contains Tanzu Kubernetes Grid or Tanzu Kubernetes releases (TKRs) binaries, Harbor, deployment dependencies, and automation source code. This TAR file can be used for the following deployment use cases in an air-gapped environment
+    1. Download the TAR file `service-installer-for-AWS-Tanzu-with-Dependency-1.3.1.tar.gz` from the [VMware Marketplace](https://marketplace.cloud.vmware.com/services/details/service-installer-for-vmware-tanzu-1?slug=true). It contains Tanzu Kubernetes Grid or Tanzu Kubernetes releases (TKr) binaries, Harbor, deployment dependencies, and automation source code. This TAR file can be used for the following deployment use cases in an air-gapped environment
 
           - To deploy Tanzu Kubernetes Grid using automation
           - To deploy Tanzu Kubernetes Grid manually by following reference architecture and Deployment guide
@@ -275,12 +275,12 @@ The entire setup that is brought up by the automation code:
 ### AWS IAM Components Created by cf
 
 The installer creates IAM resources by dividing them into two CloudFormation stacks. 
-* Tanzu Kubernetes Grid (TKG) Stack(tanzu-cloud-formation-iamtemplate): Creates IAM resources(role, policies and instance profiles) needed by Tanzu cluster deployment.
-* Service Installer for VMware Tanzu (SIVT) stack(sivt-cloud-formation-iamtemplate): Creates IAM resources(role, policies and instance profiles) needed for automation code for further deployment.
+* Tanzu Kubernetes Grid (TKG) Stack (tanzu-cloud-formation-iamtemplate): Creates IAM resources(role, policies and instance profiles) needed by Tanzu cluster deployment.
+* Service Installer for VMware Tanzu (SIVT) stack (sivt-cloud-formation-iamtemplate): Creates IAM resources(role, policies and instance profiles) needed for automation code for further deployment.
 
 The `make cf` command creates these stacks one by one starting with the Tanzu Kubernetes Grid stack. If you are manually creating instance profiles, roles, and policies, ensure that the following are created and they are given the same names as in this table.
 
-**Note:** For more information on role and their detailed actions, see the [tanzu-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/tanzu-cloud-formation-iamtemplate.yaml) [sivt-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/sivt-cloud-formation-iamtemplate.yaml) file
+**Note:** For more information on role and their detailed actions, see the [tanzu-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/tanzu-cloud-formation-iamtemplate.yaml) and [sivt-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/sivt-cloud-formation-iamtemplate.yaml) files.
 
 |Profile|Roles|Policies|Stack type |
 |-------|-----|--------|------------|
@@ -290,7 +290,7 @@ The `make cf` command creates these stacks one by one starting with the Tanzu Ku
 |tkg-s3-viewer|tkg-s3-role|tkg-airgapped-bucket| SIVT
 |tkg-bootstrap|tkg-bootstrap|tkg-airgapped-bucket<br/>nodes.tkg.cloud.vmware.com<br/>controllers.tkg.cloud.vmware.com<br/>control-plane.tkg.cloud.vmware.com| SIVT
 
-**Note:** SIVT IAM resources (role, policies and instance profiles) are prepended with the AWS Region specified by the user. For example, us-east-1-tkg-bootstrap
+**Note:** SIVT IAM resources (role, policies and instance profiles) are prepended with the AWS Region specified by the user. For example, `us-east-1-tkg-bootstrap`
 
 ## Customizing Harbor
 By default, Harbor is installed on an Amazon 2 AMI because it needs the Amazon CLI to pull the dependencies from the Tanzu Kubernetes Grid dependencies bucket and it also requires the ability to install Docker in an air-gapped environment.
