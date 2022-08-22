@@ -27,6 +27,7 @@
 - In case you are using proxy with self-signed or custom CA certificate, SIVT fails to pull the kind image while deploying Tanzu Kubernetes Grid management cluster in a vSphere VDS environment.</br> 
    
    **Resolution:** Before initiating the deployment with SIVT, perform the following steps:
+    
     1. Import the proxy certificate into the SIVT VM.
     1. Run the following commands: 
         ```
