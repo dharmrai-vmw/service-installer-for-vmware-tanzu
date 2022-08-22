@@ -24,7 +24,7 @@ Service Installer for VMware Tanzu deploys the following components:
 
 This document provides the steps to deploy Tanzu Kubernetes Grid on AWS environment using Service Installer for VMware Tanzu.
 
-## Prerequisites
+## <a id=prerequisites> </a> Prerequisites
 
 Before deploying Tanzu Kubernetes Grid on AWS using Service Installer for VMware Tanzu (SIVT), ensure that the following are set up.
 
@@ -82,7 +82,7 @@ Before deploying Tanzu Kubernetes Grid on AWS using Service Installer for VMware
 
 - By default, AWS allows only 5 Elastic IP addresses per region. Hence, make sure AWS region that you are using has at least 2 free Elastic IP addresses.
 
-### Prerequisites for Using Existing VPCs
+### <a id=prerequisites-for-using-existing-vpcs> </a> Prerequisites for Using Existing VPCs
 
 These prerequisites are applicable only if you use manually pre-created VPC for the deployment. Make sure that the following steps are completed before running `make` commands to initiate the deployment.
 
@@ -132,7 +132,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
 
 1. Save the file and continue with the deployment.
 
-## Deployment Steps
+## <a id=deployment-steps> </a> Deployment Steps
 
 **Note**: If you have completed all the steps in [Prerequisites](#prerequisites), skip to Step 3 as Step 1 and Step 2 of this section are covered in [Prerequisites](#prerequisites).
 
@@ -330,7 +330,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
       make install-ubuntu-non-airgap
       ```
 
-## Make Targets
+## <a id=make-targets> </a> Make Targets
 
 **Note:** Prerequisites mentioned in this table are applicable only if you are not using `make all` or if you are not following the step by step process.
 
@@ -350,7 +350,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
 
   ![TKG Installation](images/TKG_Installation.jpg)
 
-### VPC Creation
+### <a id=vpc-creation> </a> VPC Creation
 
 If you opt for VPC creation with Service Installer for VMware Tanzu using either `non-airgapped-deployment-with-vpc` or `create-non-airgapped-multi-vpc-infra` make target, the installer creates the following networking components:
 
@@ -363,7 +363,7 @@ The following diagram depicts single VPC and associated networking created by th
  
 ![VPC created](images/VPC_creation.jpg)
 
-### AWS IAM Components Created by cf
+### <a id=aws-iam-components-created-by-cf> </a> AWS IAM Components Created by cf
 
 The installer creates IAM resources by dividing them into two CloudFormation stacks.
 * Tanzu Kubernetes Grid (TKG) Stack (tanzu-cloud-formation-iamtemplate): Creates IAM resources (role, policies and instance profiles) needed by Tanzu cluster deployment.
@@ -384,7 +384,7 @@ The `make cf` command creates these stacks one by one starting with the TKG stac
 
 **Note:** SIVT IAM resources (role, policies and instance profiles) are prepended with the AWS Region specified by the user. For example, `us-east-1-tkg-bootstrap`
 
-## Customizing Tanzu Kubernetes Grid
+## <a id=customizing-tanzu-kubernetes-grid> </a> Customizing Tanzu Kubernetes Grid
 
 All configurable options and their default values can be seen in the
 [terraform/startup.sh](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/terraform) file. The variables must be edited in this file for them to take effect because Terraform is not configured to take all of them as input.
@@ -392,7 +392,7 @@ All configurable options and their default values can be seen in the
 For a description of all variables, see the [Variables](#variables) section.
 
 
-## Accessing Your Tanzu Kubernetes Grid Cluster
+## <a id=accessing-your-tanzu-kubernetes-grid-cluster> </a> Accessing Your Tanzu Kubernetes Grid Cluster
 
   - You can run the following command on the bootstrap instance to track the progress of the Tanzu Kubernetes Grid installation. 
       ```
@@ -401,7 +401,7 @@ For a description of all variables, see the [Variables](#variables) section.
   - Once you see a message about the security group of your bootstrap being modified, it implies that the script has finished executing. You can now run `kubectl get pods -A` to see all the pods running on your management cluster. Additionally, if you run `kubectl get nodes`, you can use an IP address of one of the cluster nodes and SSH to it from the bootstrap node using the SSH key that you provided to Terraform.
 
 
-## Clean Up the Deployment
+## <a id=clean-up-the-deployment> </a> Clean Up the Deployment
 
   - To delete the Tanzu Kubernetes Grid cluster, run the following command on the bootstrap node.
 
@@ -432,7 +432,7 @@ For a description of all variables, see the [Variables](#variables) section.
 
   **Note:** AMIs and load balancers created as part of the deployment must be deleted manually.
 
-## Variables
+## <a id=variables> </a> Variables
 
 The `terraform/startup.sh` file contains the following configurable options that you can set within the file.
 
@@ -478,7 +478,7 @@ The `terraform/startup.sh` file contains the following configurable options that
 |TO_TOKEN|unset|To enable Tanzu Observability(TO) for workload cluster provide the TO token|
 |TO_URL|unset|To enable Tanzu Observability(TO) for workload cluster provide the TO URL|
 
-## Troubleshooting Tips
+## <a id=troubleshooting-tips> </a> Troubleshooting Tips
 
 - If your cluster does not come up, try the following steps.
 
