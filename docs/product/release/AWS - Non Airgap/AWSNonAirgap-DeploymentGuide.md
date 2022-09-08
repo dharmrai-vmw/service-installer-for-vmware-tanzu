@@ -243,7 +243,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     For more information on these variables, see [Tanzu CLI Configuration File Variable Reference](https://docs.vmware.com/en/VMware-Tanzu-Kubernetes-Grid/1.5/vmware-tanzu-kubernetes-grid-15/GUID-tanzu-config-reference.html).
 
 5. Configure integration with SaaS offerings.
-    - To register management and workload cluster to Tanzu Mission Control (TMC), provide TMC refresh token by running the following command.
+    - To register management and workload clusters to Tanzu Mission Control (TMC), provide TMC refresh token by running the following command.
       ```sh
       export TMC_API_TOKEN=<TMC API token>
       ```
