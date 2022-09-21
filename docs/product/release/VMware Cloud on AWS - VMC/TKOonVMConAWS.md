@@ -6,7 +6,7 @@ This deployment references the design provided in [VMware Tanzu for Kubernetes O
 ## Network Design
 The following diagram represents the network design required for deploying Tanzu for Kubernetes Operations on VMware Cloud on AWS using Service Installer for VMware Tanzu.
 
-![VMC Network Design](./images/VMC_Network_Design.png)
+![Network design for TKO on VMC on AWS](./images/VMC_Network_Design.png)
 
 ## Prerequisites
 Before deploying Tanzu for Kubernetes Operations on VMware Cloud on AWS using Service Installer for VMware Tanzu, ensure the following:

@@ -7,7 +7,7 @@ This deployment references the design provided in [VMware Tanzu for Kubernetes O
 ## Network Design
 The following diagram represents the network design required for deploying Tanzu for Kubernetes Operations on vSphere with NSX-T using Service Installer for VMware Tanzu.
 
-![VCF_Network_Design](./images/VCF_Network_Design.png)
+![Network Design for TKO on vSphere with NSX-T](./images/VCF_Network_Design.png)
 
 ## Prerequisites
 Before you install Service Installer for VMware Tanzu, ensure the following:
