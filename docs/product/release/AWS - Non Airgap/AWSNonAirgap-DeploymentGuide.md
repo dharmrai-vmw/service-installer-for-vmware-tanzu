@@ -165,16 +165,16 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     ```
 1. Specify the deployment type. 
    
-   **Compliant deployment:** By default, Service Installer for VMware Tanzu deploys FIPS compliant Tanzu Kubernetes Grid master and worker nodes. In this type of deployment, Service Installer for VMware Tanzu makes use of FIPS compliant and STIG hardened Ubuntu (18.04) base OS for Tanzu Kubernetes Grid cluster nodes, FIPS enabled Kubernetes overlay, and FIPS compliant Tanzu Kubernetes Grid images. To perform compliant deployment, perform the following steps:
+   **Compliant deployment:** By default, Service Installer for VMware Tanzu deploys FIPS compliant Tanzu Kubernetes Grid control plane node and worker nodes. In this type of deployment, Service Installer for VMware Tanzu makes use of FIPS compliant and STIG hardened Ubuntu (18.04) base OS for Tanzu Kubernetes Grid cluster nodes, FIPS enabled Kubernetes overlay, and FIPS compliant Tanzu Kubernetes Grid images. To perform compliant deployment, perform the following steps:
    
     - For doing FIPS compliant deployment on Ubuntu, the installer needs Ubuntu advantage username and password. Export these using the following commands:
       ```
       export UBUNTU_ADVANTAGE_PASSWORD=<user:password>
       export UBUNTU_ADVANTAGE_PASSWORD_UPDATES=<user:password>
       ```
-    - If Ubuntu advantage username and password are not available, disable FIPS enablement for Ubuntu by setting `install_fips` variable to `no` in file `<your_directory>/deployment_binaries/sivt-aws-federal/ami/stig/roles/canonical-ubuntu-18.04-lts-stig-hardening/vars/main.yml`. This will disable FIPS at the OS level.
+    - If Ubuntu advantage username and password are not available, deactivate FIPS enablement for Ubuntu by setting `install_fips` variable to `no` in file `<your_directory>/deployment_binaries/sivt-aws-federal/ami/stig/roles/canonical-ubuntu-18.04-lts-stig-hardening/vars/main.yml`. This will deactivate FIPS at the OS level.
 
-   **Non-compliant deployment:** If you are looking for deployment with vanilla Tanzu Kubernetes Grid master and worker nodes, set the `COMPLIANT_DEPLOYMENT` variable to `false` by running the following command on your Jumpbox VM. Once this variable is set, Service Installer for VMware Tanzu makes use of vanilla Tanzu Kubernetes Grid images for installation.
+   **Non-compliant deployment:** If you are looking for deployment with vanilla Tanzu Kubernetes Grid control plane node and worker nodes, set the `COMPLIANT_DEPLOYMENT` variable to `false` by running the following command on your Jumpbox VM. Once this variable is set, Service Installer for VMware Tanzu makes use of vanilla Tanzu Kubernetes Grid images for installation.
 
       ```sh
       export COMPLIANT_DEPLOYMENT=false
@@ -244,7 +244,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     For more information on these variables, see [Tanzu CLI Configuration File Variable Reference](https://docs.vmware.com/en/VMware-Tanzu-Kubernetes-Grid/1.5/vmware-tanzu-kubernetes-grid-15/GUID-tanzu-config-reference.html).
 
 1. Configure integration with SaaS offerings.
-    - To register master and workload cluster to Tanzu Mission Control (TMC), provide TMC refresh token by running the following command.
+    - To register management and workload clusters to Tanzu Mission Control (TMC), provide TMC refresh token by running the following command.
       ```sh
       export TMC_API_TOKEN=<TMC API token>
       ```
@@ -270,7 +270,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     **Note:** 
       
       - Once you extract the TAR file downloaded as part of [Prerequisites](#prerequisites), make sure that you are in `<your_directory>/deployment_binaries/sivt-aws-federal/` folder while running `make` commands.
-      - To enable or disable STIG and FIPS compliance, see step 4 of this deployment procedure.
+      - To activate or deactivate STIG and FIPS compliance, see step 4 of this deployment procedure.
     
     To get the list of all the make command targets run the following command.
     ```sh
@@ -440,11 +440,11 @@ The `terraform/startup*.sh` files contain the following configurable options tha
 |AWS_SSH_KEY_NAME|Pulls from tfvars| The SSH key to use for TKG cluster; must be RSA for STIG|
 |AWS_REGION|Pulls from tfvars| The AWS region to deploy Tanzu Kubernetes Grid|
 |CLUSTER_PLAN|dev|The cluster plan for Tanzu Kubernetes Grid|
-|ENABLE_AUDIT_LOGGING|true|Enable to disable auditing on Kubernetes|
+|ENABLE_AUDIT_LOGGING|true|Activate or deactivate auditing on Kubernetes|
 |TKG_CUSTOM_COMPATABILITY_PATH|fips/tkg-compatability|The compatibility path to use; set to "" for non FIPS deployment|
 |COMPLIANT_DEPLOYMENT|true|Set to false for non-compliant deployment|
-|ENABLE_SERVING_CERTS|false|Enable or disable serving certificates on Kubernetes|
-|PROTECT_KERNEL_DEFAULTS|true|Enable to disable `--protect-kernel-defaults` on kubelet. Set to `true` only for AMIs that allow it|
+|ENABLE_SERVING_CERTS|false|Activate or deactivate serving certificates on Kubernetes|
+|PROTECT_KERNEL_DEFAULTS|true|Activate or deactivate `--protect-kernel-defaults` on kubelet. Set to `true` only for AMIs that allow it|
 |AWS_NODE_AZ_1|unset|Required for Prod clusters, set node availability zone 1|
 |AWS_NODE_AZ_2|unset|Required for Prod clusters, set node availability zone 2|
 |AWS_PRIVATE_SUBNET_ID_1|unset|Required for Prod clusters private subnet 1|

@@ -231,7 +231,7 @@ By default Harbor is installed on an Amazon 2 ami as it needs the amazon CLI to 
 This section describes the process of customizing the Ubuntu AMIs created in the deployment. The AMIs are created using the VPC ID and subnet ID of your airgapped VPC.
 
   - **FIPS** 
-  To disable FIPS set `install_fips` to `no` in [STIG roles' main.yml](https://gitlab.eng.vmware.com/core-build/canonical-ubuntu-18.04-lts-stig-hardening/-/blob/master/vars/main.yml)
+  To deactivate FIPS set `install_fips` to `no` in [STIG roles' main.yml](https://gitlab.eng.vmware.com/core-build/canonical-ubuntu-18.04-lts-stig-hardening/-/blob/master/vars/main.yml)
 
   - **Adding CA certificate in the trust store**
   To add CA certificate(s) to the AMI, copy the CA(s) in `PEM` format to [STIG roles' files/ca folder](https://gitlab.eng.vmware.com/core-build/canonical-ubuntu-18.04-lts-stig-hardening/-/tree/master/files/ca)

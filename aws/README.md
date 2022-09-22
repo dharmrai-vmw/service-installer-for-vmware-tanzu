@@ -45,7 +45,7 @@ For non air-gapped deployment, Service Installer for VMware Tanzu supports only 
 
 ### Compliant Deployment
 
-Compliant deployment enables users to deploy Tanzu Kubernetes Grid according to FIPS and STIG security standards. This deployment process is configured to deploy FIPS compliant Tanzu Kubernetes Grid master and worker nodes. Following is the list of compliant components used:
+Compliant deployment enables users to deploy Tanzu Kubernetes Grid according to FIPS and STIG security standards. This deployment process is configured to deploy FIPS compliant Tanzu Kubernetes Grid control plane node and worker nodes. Following is the list of compliant components used:
 
 - FIPS compliant and STIG hardened Ubuntu (18.04) base OS for Tanzu Kubernetes Grid cluster nodes
 - FIPS compliant Tanzu Kubernetes Grid (TKG) / Tanzu Kubernetes releases (TKr) binaries
