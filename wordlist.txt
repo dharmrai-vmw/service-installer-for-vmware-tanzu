@@ -104,3 +104,4 @@ compatability
 stig
 KUBECONFIG
 atleast
+truststore
