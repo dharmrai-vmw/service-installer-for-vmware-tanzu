@@ -368,7 +368,7 @@ The following diagram depicts single VPC and associated networking created by th
 
 The `make cf` command creates the following instance profiles, roles, and policies. If you are manually creating instance profiles, roles, and policies, ensure that the following are created and they are given the same names as in this table.
 
-**Note:** For more information on role and their detailed actions, see the [cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/blob/main/aws/cloud-formation-iamtemplate) file
+**Note:** For more information on role and their detailed actions, see the [tanzu-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/tanzu-cloud-formation-iamtemplate.yaml) and [sivt-cloud-formation-iamtemplate](https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/main/aws/sivt-cloud-formation-iamtemplate.yaml) files.
 
 |Profile|Roles|Policies|
 |-------|-----|--------|
