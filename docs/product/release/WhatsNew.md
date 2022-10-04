@@ -70,10 +70,11 @@
 ## Known Issues
 
 - Tanzu Kubernetes Grid Service proxy deployment is not supported in this release.
-- Tanzu Kubernetes Grid management cluster creation with proxy is failing with unable to update no_proxy config on kube-api server. This is not a SIVT issue.
+- Tanzu Kubernetes Grid management cluster creation with proxy is failing with unable to update no_proxy config on kube-api server. This is not an SIVT issue.
 - TMC integration of management and workload clusters fails for AWS non air-gapped compliant deployment, due to a known issue in the TMC API.
 - Prometheus deployment fails if SaaS is enabled in non-airgap AWS deployment.
 - Harbor deployment fails both with and without SaaS in multi workload cluster configurations in non-airgap AWS deployment.
+- Tanzu Kubernetes Grid proxy deployment fails if a space is present in the no-proxy comma-separated list. Ensure that there is no space or newline character added before or after a comma in the no-proxy comma-separated list.
 - In case you are using proxy with self-signed or custom CA certificate, SIVT fails to pull the kind image while deploying Tanzu Kubernetes Grid management cluster in a vSphere VDS environment.</br>
    
    **Resolution:** Before initiating the deployment with SIVT, perform the following steps:
