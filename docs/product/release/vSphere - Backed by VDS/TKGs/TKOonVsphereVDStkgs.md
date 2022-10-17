@@ -33,7 +33,7 @@ If you are deploying into an air-gapped environment, the following steps are app
 
 ### Create the Content Library and Populate with Tanzu Kubernetes Grid Images
 
-Service Installer attempts to create a subscribed content library, which fails in air-gapped environments. 
+Service Installer attempts to create a subscribed content library, which fails in air-gapped environments.
 To proceed without failure, create this content library manually. See [the vSphere with Tanzu documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-E8C37D8A-E261-44F0-9947-45ABAB526CF3.html) for information on creating a content library manually.
 
 **Note**: The user configured content library name can be provided as input for Service Installer to detect and use it during deployments
@@ -42,7 +42,8 @@ To proceed without failure, create this content library manually. See [the vSphe
 
 You can download the Tanzu Kubernetes Grid images from the respective release page linked at [this URL](https://wp-content.vmware.com/v2/latest). To determine which files to download, refer to [the vSphere with Tanzu documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-E8C37D8A-E261-44F0-9947-45ABAB526CF3.html).
 
-Alternatively, there is a community-maintained shell script to automate the process of downloading the Tanzu Kubernetes Grid OVAs. This shell script can be downloaded from [this URL](https://github.com/papivot/tkg-helper-scripts/blob/main/download-images-offline-tkr.sh). 
+Alternatively, there is a community-maintained shell script to automate the process of downloading the Tanzu Kubernetes Grid OVAs. This shell script can be downloaded from [this URL](https://github.com/papivot/tkg-helper-scripts/blob/main/download-images-offline-tkr.sh).
+
 **Note**: This script is community-maintained and, thus, it is not supported.
 
 
