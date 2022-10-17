@@ -63,27 +63,6 @@ def checkenv(jsonspec):
     except Exception:
         return None
 
-def envCheck(runConfig):
-    try:
-        tkg_util_obj = TkgUtil(run_config=runConfig)
-        env = tkg_util_obj.get_desired_state_env()
-        tkgType = tkg_util_obj.get_desired_tkg_type()
-    except Exception:
-        logger.error("No env passed")
-        return "NO_ENV", 400
-    if env is None:
-        return "NO_ENV", 400
-    elif env == Env.VSPHERE and tkgType == Env.TKGM:
-        pass
-    elif env == Env.VSPHERE and tkgType == Env.TKGS:
-        pass
-    elif env == Env.VCF and tkgType == Env.TKGM:
-        pass
-    elif env == Env.VCF and tkgType == Env.TKGS:
-        return "TKGs on VCF not supported"
-    else:
-        return "WRONG_ENV", 500
-    return env, 200
 
 def createSubscribedLibrary(vcenter_ip, vcenter_username, password, jsonspec):
     try:
@@ -839,35 +818,27 @@ def getSeNewBody(newCloudUrl, seGroupName, clusterUrl, dataStore):
     }
     return json.dumps(body, indent=4)
 
-def getClusterStatusOnTanzu(cluster_name, typen=None, return_dict = False):
+
+def getClusterStatusOnTanzu(management_cluster, typen):
     try:
-        cluster_status_dict = {"deployed": False,
-                           "running": False,
-                           "out": ""}
-        tanzu_get_clstr_cmd = ["tanzu", "cluster", "list", "--include-management-cluster", "-o", "json"]
-        o = runShellCommandAndReturnOutput(tanzu_get_clstr_cmd)
-
-        cluster_status_dict["out"] = o[0]
+        if typen == "management":
+            listn = ["tanzu", "management-cluster", "get"]
+        else:
+            listn = ["tanzu", "cluster", "get"]
+        o = runShellCommandAndReturnOutput(listn)
         if o[1] == 0:
-            for clstr in json.loads(''.join([x for x in o[0].split('\n') if not x.startswith('Downloading')])):
-                if clstr["name"] == cluster_name:
-                    cluster_status_dict["running"] = True if "running" in clstr["status"] else False
-                    if "running" in clstr["status"]:
-                        cluster_status_dict["deployed"] = True
-        else:
-            if return_dict:
-                return cluster_status_dict
-            return False
-        if return_dict:
-            return cluster_status_dict
-
-        if cluster_status_dict["deployed"] and cluster_status_dict["running"]:
-            return True
+            try:
+                if o[0].__contains__(management_cluster) and o[0].__contains__("running"):
+                    return True
+                else:
+                    return False
+            except:
+                return False
         else:
             return False
-    except Exception as e:
-        logger.error(f"EXCEPTION : {e}")
+    except:
         return False
+
 
 def runSsh(vc_user):
     os.system("rm -rf /root/.ssh/id_rsa")
@@ -904,115 +875,47 @@ def getNetworkFolder(netWorkName, vcenter_ip, vcenter_username, password):
 
 def template14deployYaml(cluster_name, clusterPlan, datacenter, dataStorePath,
                          folderPath, mgmt_network, vspherePassword, sharedClusterResourcePool,
-                         vsphereServer, sshKey, vsphereUseName, machineCount, size, type, vsSpec,
-                         jsonspec, env):
+                         vsphereServer, sshKey, vsphereUseName, machineCount, size, typen, vsSpec,
+                         jsonspec):
     deploy_yaml = FileHelper.read_resource(Paths.TKG_CLUSTER_14_SPEC_J2)
     t = Template(deploy_yaml)
     datacenter = "/" + datacenter
     control_plane_vcpu = ""
     control_plane_disk_gb = ""
-    control_plane_mem_gb = ""
+    # control_plane_mem_gb = ""
     control_plane_mem_mb = ""
     osName = ""
-    proxyCert = ""
     try:
-        
-        if env == Env.VSPHERE or Env.VCF:
-            if type == ClusterType.SHARED:
-                try:
-                    proxyCert_raw = jsonspec['envSpec']['proxySpec']['tkgSharedservice']['proxyCert']
-                    base64_bytes = base64.b64encode(proxyCert_raw.encode("utf-8"))
-                    proxyCert = str(base64_bytes, "utf-8")
-                    isProxyCert = "true"
-                except:
-                    isProxyCert = "false"
-                    logger.info("Proxy certificare for  shared is not provided")
-            elif type == ClusterType.WORKLOAD:
-                try:
-                    proxyCert_raw = jsonspec['envSpec']['proxySpec']['tkgWorkload']['proxyCert']
-                    base64_bytes = base64.b64encode(proxyCert_raw.encode("utf-8"))
-                    proxyCert = str(base64_bytes, "utf-8")
-                    isProxyCert = "true"
-                except:
-                    isProxyCert = "false"
-                    logger.info("Proxy certificare for  workload is not provided")
-        if env == Env.VSPHERE:
-            if type == ClusterType.SHARED:
-                clustercidr = vsSpec.tkgComponentSpec.tkgMgmtComponents.tkgSharedserviceClusterCidr
-                servicecidr = vsSpec.tkgComponentSpec.tkgMgmtComponents.tkgSharedserviceServiceCidr
-                size_selection = vsSpec.tkgComponentSpec.tkgMgmtComponents.tkgSharedserviceSize
-                if str(size_selection).lower() == "custom":
-                    control_plane_vcpu = jsonspec['tkgComponentSpec']['tkgMgmtComponents'][
-                        'tkgSharedserviceCpuSize']
-                    control_plane_disk_gb = jsonspec['tkgComponentSpec']['tkgMgmtComponents'][
-                        'tkgSharedserviceStorageSize']
-                    control_plane_mem_gb = jsonspec['tkgComponentSpec']['tkgMgmtComponents'][
-                        'tkgSharedserviceMemorySize']
-                    control_plane_mem_mb = str(int(control_plane_mem_gb) * 1024)
-                try:
-                    osName = str(jsonspec['tkgComponentSpec']['tkgMgmtComponents'][
-                                        'tkgSharedserviceBaseOs'])
-                    kubeVersion = str(jsonspec['tkgComponentSpec']['tkgMgmtComponents'][
-                                            'tkgSharedserviceKubeVersion'])
-                except Exception as e:
-                    raise Exception("Keyword " + str(e) + "  not found in input file")
-            elif type == ClusterType.WORKLOAD:
-                clustercidr = vsSpec.tkgWorkloadComponents.tkgWorkloadClusterCidr
-                servicecidr = vsSpec.tkgWorkloadComponents.tkgWorkloadServiceCidr
-                size_selection = vsSpec.tkgWorkloadComponents.tkgWorkloadSize
-                if str(size_selection).lower() == "custom":
-                    control_plane_vcpu = jsonspec['tkgWorkloadComponents'][
-                        'tkgWorkloadCpuSize']
-                    control_plane_disk_gb = jsonspec['tkgWorkloadComponents'][
-                        'tkgWorkloadStorageSize']
-                    control_plane_mem_gb = jsonspec['tkgWorkloadComponents'][
-                        'tkgWorkloadMemorySize']
-                    control_plane_mem_mb = str(int(control_plane_mem_gb) * 1024)
-                try:
-                    osName = str(jsonspec['tkgWorkloadComponents']['tkgWorkloadBaseOs'])
-                    kubeVersion = str(
-                        jsonspec['tkgWorkloadComponents']['tkgWorkloadKubeVersion'])
-                except Exception as e:
-                    raise Exception("Keyword " + str(e) + "  not found in input file")
-        elif env == Env.VCF:
-            if type == ClusterType.SHARED:
-                clustercidr = vsSpec.tkgComponentSpec.tkgSharedserviceSpec.tkgSharedserviceClusterCidr
-                servicecidr = vsSpec.tkgComponentSpec.tkgSharedserviceSpec.tkgSharedserviceServiceCidr
-                size_selection = vsSpec.tkgComponentSpec.tkgSharedserviceSpec.tkgSharedserviceSize
-                if str(size_selection).lower() == "custom":
-                    control_plane_vcpu = jsonspec['tkgComponentSpec']['tkgSharedserviceSpec'][
-                        'tkgSharedserviceCpuSize']
-                    control_plane_disk_gb = jsonspec['tkgComponentSpec']['tkgSharedserviceSpec'][
-                        'tkgSharedserviceStorageSize']
-                    control_plane_mem_gb = jsonspec['tkgComponentSpec']['tkgSharedserviceSpec'][
-                        'tkgSharedserviceMemorySize']
-                    control_plane_mem_mb = str(int(control_plane_mem_gb) * 1024)
-                try:
-                    osName = str(jsonspec['tkgComponentSpec']['tkgSharedserviceSpec'][
-                                        'tkgSharedserviceBaseOs'])
-                    kubeVersion = str(jsonspec['tkgComponentSpec']['tkgSharedserviceSpec'][
-                                            'tkgSharedserviceKubeVersion'])
-                except Exception as e:
-                    raise Exception("Keyword " + str(e) + "  not found in input file")
-            elif type == ClusterType.WORKLOAD:
-                clustercidr = vsSpec.tkgWorkloadComponents.tkgWorkloadClusterCidr
-                servicecidr = vsSpec.tkgWorkloadComponents.tkgWorkloadServiceCidr
-                size_selection = vsSpec.tkgWorkloadComponents.tkgWorkloadSize
-                if str(size_selection).lower() == "custom":
-                    control_plane_vcpu = jsonspec['tkgWorkloadComponents'][
-                        'tkgWorkloadCpuSize']
-                    control_plane_disk_gb = jsonspec['tkgWorkloadComponents'][
-                        'tkgWorkloadStorageSize']
-                    control_plane_mem_gb = jsonspec['tkgWorkloadComponents'][
-                        'tkgWorkloadMemorySize']
-                    control_plane_mem_mb = str(int(control_plane_mem_gb) * 1024)
-                try:
-                    osName = str(jsonspec['tkgWorkloadComponents']['tkgWorkloadBaseOs'])
-                    kubeVersion = str(
-                        jsonspec['tkgWorkloadComponents']['tkgWorkloadKubeVersion'])
-                except Exception as e:
-                    raise Exception("Keyword " + str(e) + "  not found in input file")
-        
+        if typen == ClusterType.SHARED:
+            clustercidr = vsSpec.tkgComponentSpec.tkgMgmtComponents.tkgSharedserviceClusterCidr
+            servicecidr = vsSpec.tkgComponentSpec.tkgMgmtComponents.tkgSharedserviceServiceCidr
+            size_selection = vsSpec.tkgComponentSpec.tkgMgmtComponents.tkgSharedserviceSize
+            if str(size_selection).lower() == "custom":
+                control_plane_vcpu = jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgSharedserviceCpuSize']
+                control_plane_disk_gb = jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgSharedserviceStorageSize']
+                control_plane_mem_gb = jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgSharedserviceMemorySize']
+                control_plane_mem_mb = str(int(control_plane_mem_gb) * 1024)
+            try:
+                osName = str(jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgSharedserviceBaseOs'])
+                kubeVersion = str(jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgSharedserviceKubeVersion'])
+                logger.debug("Targetted Kube Version: {}".format(kubeVersion))
+            except Exception as e:
+                raise Exception("Keyword " + str(e) + "  not found in input file")
+        elif typen == ClusterType.WORKLOAD:
+            clustercidr = vsSpec.tkgWorkloadComponents.tkgWorkloadClusterCidr
+            servicecidr = vsSpec.tkgWorkloadComponents.tkgWorkloadServiceCidr
+            size_selection = vsSpec.tkgWorkloadComponents.tkgWorkloadSize
+            if str(size_selection).lower() == "custom":
+                control_plane_vcpu = jsonspec['tkgWorkloadComponents']['tkgWorkloadCpuSize']
+                control_plane_disk_gb = jsonspec['tkgWorkloadComponents']['tkgWorkloadStorageSize']
+                control_plane_mem_gb = jsonspec['tkgWorkloadComponents']['tkgWorkloadMemorySize']
+                control_plane_mem_mb = str(int(control_plane_mem_gb) * 1024)
+            try:
+                osName = str(jsonspec['tkgWorkloadComponents']['tkgWorkloadBaseOs'])
+                kubeVersion = str(
+                    jsonspec['tkgWorkloadComponents']['tkgWorkloadKubeVersion'])
+            except Exception as e:
+                raise Exception("Keyword " + str(e) + "  not found in input file")
     except Exception:
         logger.error("Error in yaml parsing for cluster creation")
         logger.error(traceback.format_exc())
@@ -1043,13 +946,13 @@ def template14deployYaml(cluster_name, clusterPlan, datacenter, dataStorePath,
 def deployCluster(cluster_name, clusterPlan, datacenter, dataStorePath,
                   folderPath, mgmt_network, vspherePassword, sharedClusterResourcePool,
                   vsphereServer, sshKey, vsphereUseName, machineCount, size, typen, vsSpec,
-                  jsonspec, env):
+                  jsonspec):
     try:
         if not getClusterStatusOnTanzu(cluster_name, "cluster"):
             template14deployYaml(cluster_name, clusterPlan, datacenter, dataStorePath,
                                  folderPath, mgmt_network, vspherePassword,
                                  sharedClusterResourcePool, vsphereServer, sshKey, vsphereUseName,
-                                 machineCount, size, typen, vsSpec, jsonspec, env)
+                                 machineCount, size, typen, vsSpec, jsonspec)
             logger.info("Deploying " + cluster_name + "cluster")
             os.putenv("DEPLOY_TKG_ON_VSPHERE7", "true")
             logger.info("---------- yaml---------")
@@ -1602,6 +1505,7 @@ def installExtentionFor14(service_name, cluster, jsonspec):
                 }
                 return json.dumps(d), 500"""
         sub_command = ["grep", AppName.CONTOUR]
+        import pdb; pdb.set_trace()
         command_cert = grabPipeOutput(main_command, sub_command)
         if not verifyPodsAreRunning(AppName.CONTOUR, command_cert[0],
                                     RegexPattern.RECONCILE_SUCCEEDED) or Upgrade_Extensions.UPGRADE_EXTN:
@@ -2227,6 +2131,106 @@ def checkPinnipedInstalled():
     return json.dumps(d), 200
 
 
+def createRbacUsers(clusterName, isMgmt, env, cluster_admin_users, admin_users, edit_users, view_users):
+    try:
+        if isMgmt:
+            switch = switchToManagementContext(clusterName)
+            if switch[1] != 200:
+                logger.info(switch[0].json['msg'])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": switch[0].json['msg'],
+                    "ERROR_CODE": 500
+                }
+                return json.dumps(d), 500
+        else:
+            switch = switchToContext(clusterName, env=env)
+            if switch[1] != 200:
+                logger.info(switch[0].json['msg'])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": switch[0].json['msg'],
+                    "ERROR_CODE": 500
+                }
+                return json.dumps(d), 500
+        if isMgmt:
+            exportCmd = ["tanzu", "management-cluster", "kubeconfig", "get",
+                         clusterName, "--export-file",
+                         Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig"]
+        else:
+            exportCmd = ["tanzu", "cluster", "kubeconfig", "get",
+                         clusterName, "--export-file",
+                         Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig"]
+
+        output = runShellCommandAndReturnOutputAsList(exportCmd)
+        if output[1] == 0:
+            logger.info(
+                "Exported kubeconfig at  " + Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig")
+        else:
+            logger.error(
+                "Failed to export config file to " + Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig")
+            logger.error(output[0])
+            d = {
+                "responseType": "ERROR",
+                "msg": "Failed to export config file to " + Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig",
+                "ERROR_CODE": 500
+            }
+            return json.dumps(d), 500
+
+        rbac_dict = dict()
+        rbac_dict.update({"cluster-admin": cluster_admin_users})
+        rbac_dict.update({"admin": admin_users})
+        rbac_dict.update({"edit": edit_users})
+        rbac_dict.update({"view": view_users})
+
+        for key in rbac_dict:
+            users = rbac_dict[key]
+            if users:
+                users_list = users.split(",")
+                for username in users_list:
+                    logger.info("Checking if Cluster Role binding exists for the user: " + username)
+                    main_command = ["kubectl", "get", "clusterrolebindings"]
+                    sub_command = ["grep", username + "-crb"]
+                    output = grabPipeOutput(main_command, sub_command)
+                    if output[1] == 0:
+                        if output[0].__contains__(key):
+                            logger.info(key + " role binding for user: " + username + " already exists!")
+                            continue
+                    logger.info("Creating Cluster Role binding for user: " + username)
+                    listOfCmd = ["kubectl", "create", "clusterrolebinding", username + "-crb",
+                                 "--clusterrole", key, "--user", username]
+                    output = runShellCommandAndReturnOutputAsList(listOfCmd)
+                    if output[1] == 0:
+                        logger.info("Created RBAC for user: " + username + " SUCCESSFULLY")
+                        logger.info("Kubeconfig file has been generated and stored at " +
+                                    Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig")
+                    else:
+                        logger.error("Failed to created Cluster Role Binding for user: " + username)
+                        logger.error(output[0])
+                        d = {
+                            "responseType": "ERROR",
+                            "msg": "Failed to created Cluster Role Binding for user: " + username,
+                            "ERROR_CODE": 500
+                        }
+                        return json.dumps(d), 500
+
+        d = {
+            "responseType": "SUCCESS",
+            "msg": "Created RBAC successfully for all the provided users",
+            "ERROR_CODE": 200
+        }
+        return json.dumps(d), 200
+
+    except Exception as e:
+        logger.info("Some error occurred while creating cluster role bindings")
+        d = {
+            "responseType": "ERROR",
+            "msg": "Some error occurred while creating cluster role bindings",
+            "ERROR_CODE": 500
+        }
+        return json.dumps(d), 500
+
+
 def generateToJsonFile(management_cluster, provisioner_name, cluster_name, toUrl, toSecrets):
     fileName = "to_json.json"
     toJson = {
@@ -2438,7 +2442,7 @@ def registerTanzuObservability(cluster_name, size, jsonspec):
         else:
             d = {
                 "responseType": "SUCCESS",
-                "msg": "Tanzu observability is deactivated",
+                "msg": "Taznu observability is disabled",
                 "ERROR_CODE": 200
             }
             return json.dumps(d), 200

@@ -544,11 +544,11 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
         }
         if (!this.apiClient.AviIpValidated){
             if (mgmtErrorMsg === '') {
-                this.errorNotification = null;
+                this.errorNotification = '';
             } else {
                 this.errorNotification = mgmtErrorMsg;
             }
-            if (this.errorNotification === null) {
+            if (this.errorNotification === '') {
                 if (clusterVipError !== '') {
                     this.errorNotification = clusterVipError;
                 }
@@ -557,7 +557,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                     this.errorNotification = this.errorNotification + '\n' + clusterVipError;
                 }
             }
-            if (this.errorNotification === null) {
+            if (this.errorNotification === '') {
             }
             this.apiClient.AviIpValidated = false;
         }
@@ -644,7 +644,6 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 if (data.responseType === 'SUCCESS') {
                     this.nameResolution = true;
                     this.loadingState = ClrLoadingState.DEFAULT;
-                    this.errorNotification = null;
                 } else if (data.responseType === 'ERROR') {
                     this.nameResolution = false;
                     this.errorNotification = data.msg;

@@ -6,7 +6,7 @@ This deployment references the design provided in [VMware Tanzu for Kubernetes O
 ## Network Design
 The following diagram represents the network design required for deploying Tanzu for Kubernetes Operations on VMware Cloud on AWS using Service Installer for VMware Tanzu.
 
-![Network design for TKO deployment on VMC on AWS](./images/VMC_Network_Design.png)
+![VMC Network Design](./images/VMC_Network_Design.png)
 
 ## Prerequisites
 Before deploying Tanzu for Kubernetes Operations on VMware Cloud on AWS using Service Installer for VMware Tanzu, ensure the following:
@@ -58,15 +58,15 @@ Service Installer for VMware Tanzu acts as a bootstrap machine. Set up Internet 
 1. Create and configure an inventory group for the bootstrap VM.
 
    1. Go to **Networking & Security** > **Inventory** > **Groups** > **Compute Groups**.
-   2. Click **Add Group**.
-   3. Under **Set Members**, provide the IP address of the Service Installer OVA.
+   1. Click **Add Group**.
+   1. Under **Set Members**, provide the IP address of the Service Installer OVA.
 
 
 2. Create a Firewall Rule.
 
    1. Go to **Networking & Security** > **Security** > **Gateway Firewall** > **Compute Gateway**.
-   2. Click **Add Rule** to add a new rule.
-   3. Enter the parameters for the new rule so that Service Installer OVA can communicate with DNS, NTP servers, and public networks. <br>
+   1. Click **Add Rule** to add a new rule.
+   1. Enter the parameters for the new rule so that Service Installer OVA can communicate with DNS, NTP servers, and public networks. <br>
 
    Optionally, to access the Service Installer over SSH from an external network, create NAT and add the required firewall rules.
 
@@ -78,14 +78,14 @@ For additional product documentation, see [Add or Modify Compute Gateway Firewal
 Download the NSX Advanced Load Balancer Controller and base Kubernetes images.
 
 1. Download and import the required Photon/Ubuntu Kubernetes base OVAs to vCenter.
-    To download the images, go to [VMware Tanzu Kubernetes Grid Download Product](https://customerconnect.vmware.com/downloads/details?downloadGroup=TKG-160&productId=1098).
+    To download the images, go to [VMware Tanzu Kubernetes Grid Download Product](https://customerconnect.vmware.com/downloads/details?downloadGroup=TKG-154&productId=988&rPId=84961).
 
 1. After importing the images, convert the images to a template.
 1. Upload the NSX Advanced Load Balancer Controller OVA:
-   1. Download the NSX Advanced Load Balancer (21.1.4) OVA from [MarketPlace](https://marketplace.cloud.vmware.com/services/details/nsx-advanced-load-balancer-1?slug=true).
+   1. Download the NSX Advanced Load Balancer (20.1.7) OVA from [MarketPlace](https://marketplace.cloud.vmware.com/services/details/nsx-advanced-load-balancer-1?slug=true).
    2. Create a Content Library and upload the NSX Advanced Load Balancer Controller OVA.
 
-**Note**:
+**Note**: 
    - As part of automation for VMC deployment, SIVT uploads NSX Advanced Load Balancer Controller and base Kubernetes images to vCenter/ESXi after the necessary firewall rules are configured. All required firewall rules are configured by the SIVT automation code.
    - If you intend to upload these images from the SIVT VM even before executing the `--vmc_pre_configuration` command, you may need to add the required ESXi Inbound rule in Management Gateway manually.
 
@@ -107,13 +107,11 @@ Download the NSX Advanced Load Balancer Controller and base Kubernetes images.
     `http://<IP of Service Installer VM>:8888/`
 
 5. On the **VMC on AWS** tile, click **Deploy**.
-
 6. On the **Configure and Generate JSON** tile, click **Proceed**.
 
     By default, the values entered in the GUI are saved in the `vmc-tkgm.json` file located at `/opt/vmware/arcas/src`.
 
     See the [sample JSON file](#sample-input-file) file for reference.
-
 7. Execute the following command to initiate the deployment:
      ```
      arcas --env vmc --file /path/to/vmc-tkgm.json --session --vmc_pre_configuration --avi_configuration --tkg_mgmt_configuration --shared_service_configuration --workload_preconfig --workload_deploy --deploy_extensions
@@ -125,23 +123,23 @@ Download the NSX Advanced Load Balancer Controller and base Kubernetes images.
      ```
      arcas --env  vmc --file /path/to/vmc-tkgm.json --cleanup
      ```
-    **Note:** If you interrupt the deployment process (i.e. using a `ctrl-c`), you need to restart Service Installer to properly refresh the service. You can do this with `systemctl restart arcas`.
 
      The following table describes the parameters of the command.
 
-     Python CLI Command Parameter       | Description                                                  |
-     ---------------------------------- | ------------------------------------------------------------ |
-     --session                          | Establishes a session with CSP/VMC and performs pre-validation |
-     --vmc_pre_configuration            | Creates the required segments, firewalls rules, inventory groups, and services|
-     --avi_configuration                | Creates the resource pool and folders for NSX Advanced Load Balancer Controller <br> Deploys Avi Control Plane, generates & replaces certs and performs initial configuration (DNS,NTP)                                                    |
-     --tkg_mgmt_configuration           | Configures the required networks in Avi, creates the cloud, SE group, and IPAM profile, and maps IPAM & SE group with Cloud <br> Creates the resource pool and folders for TKG Mgmt Cluster <br> Deploys the TKG management cluster <br> Registers the TKG management cluster with TMC|
-     --shared_service_configuration     | Deploys Shared Service cluster(Makes use of TMC CLI)<br> Adds required tags to the cluster <br> Deploys Certmanager, Contour, and Harbor        |
-     --workload_preconfig               | Creates the required network configuration in Avi, creates a new SE Groups for Workload Clusters <br> Creates a new AKO config for Workload Clusters |
-     --workload_deploy                  | Deploys a workload cluster (uses the Tanzu Mission Control CLI) <br> Adds required tags to the cluster            |
-     --deploy_extensions                | Deploys extensions (Prometheus, Grafana)                      |
+     Python CLI Command Parameter         | Description                                                  |
+     ------------------------------------ | ------------------------------------------------------------ |
+     --session                            | Establishes a session with CSP/VMC and performs pre-validation |
+     --vmc_pre_configuration              | Creates the required segments, firewalls rules, inventory groups, and services|
+     --avi_configuration                  | Creates the resource pool and folders for NSX Advanced Load Balancer Controller <br> Deploys Avi Control Plane, generates & replaces certs and performs initial configuration (DNS,NTP)                                                    |
+     --tkg_mgmt_configuration             | Configures the required networks in Avi, creates the cloud, SE group, and IPAM profile, and maps IPAM & SE group with Cloud <br> Creates the resource pool and folders for TKG Mgmt Cluster <br> Deploys the TKG management cluster <br> Registers the TKG management cluster with TMC|
+     --shared_service_configuration       | Deploys Shared Service cluster(Makes use of TMC CLI)<br> Adds required tags to the cluster <br> Deploys Certmanager, Contour, and Harbor        |
+     --workload_preconfig                 | Creates the required network configuration in Avi, creates a new SE Groups for Workload Clusters <br> Creates a new AKO config for Workload Clusters |
+     --workload_deploy                    | Deploys a workload cluster (uses the Tanzu Mission Control CLI) <br> Adds required tags to the cluster            |
+     --deploy_extensions                  | Deploys extensions (Prometheus, Grafana)                      |
      | --cleanup 			 | cleanup the deployment performed by SIVT and start from scratch |
      | --verbose 			| Enables verbose logging |
-     | --skip_precheck                   | This option skips all the pre-flight checks.
+     | --wcp_shutdown                   | This option gracefully shuts down WCP service and powers off the Supervisor and Workload Cluster VMs
+     | --wcp_bringup                    | Once the WCP service is shutdown, it can be restarted through bringup option. All the Supervisor and Workload cluster VMs will get powered on
      | --load_tanzu_image_to_harbor     | This will help to load the TKG dependencies to Harbor which is pre-bundled with SIVT
 
 9. Do the following to integrate with SaaS services such as Tanzu Mission Control, Tanzu Service Mesh, and Tanzu Observability. In the `vmc-tkgm.json` file,
@@ -170,7 +168,7 @@ Service Installer VMware Tanzu (SIVT) is also available with pre-bundled Harbor 
 To do this, run the following steps.
 
 1. Download the SIVT OVA file which includes pre-bundled Harbor: `service-installer-for-VMware-Tanzu-with-Harbor.ova`
-2. Download the dependency tar file 'tanzu_16.tar' which is available for download along with the SIVT OVA file and copy it to the following location on the SIVT VM: `/opt/vmware/arcas/tools`
+2. Download the dependency jar file 'tanzu_154.tar' which is available for download along with the SIVT OVA file and copy it to the following location on the SIVT VM: `/opt/vmware/arcas/tools`
 3. Run the following command: 
 
    `arcas --load_tanzu_image_to_harbor`
@@ -185,7 +183,7 @@ To do this, run the following steps.
 
 To make changes to the configuration of a running package after deployment, update your deployed package:
 
-1. Obtain the installed package version and namespace details using the following command.
+1. Obtain the installed package version and namespace details using the following command. 
    ```
    tanzu package available list -A
    ```
@@ -194,7 +192,7 @@ To make changes to the configuration of a running package after deployment, upda
 
 3. Update the installed package using the following command.
 
-   ```
+   ``` 
    tanzu package installed update <package-name> --version <installed-package-version> --values-file <path-to-yaml-file-in-SIVT> --namespace <package-namespace>
    ```
 
@@ -213,7 +211,7 @@ To make changes to the configuration of a running package after deployment, upda
    [...]
    ```
 
-**Step 2:** Update the Grafana configuration in the `grafana-data-values.yaml` file available under `/opt/vmware/arcas/tanzu-clusters/<cluster-name>/grafana-data-values.yaml`.
+**Step 2:** Update the Grafana configuration in the `grafana-data-values.yaml` file available under `/opt/vmware/arcas/tanzu-clusters/<cluster-name>/grafana-data-values.yaml`. 
 
 **Step 3:** Update the installed package.
    ```
@@ -262,7 +260,7 @@ Service Installer automatically generates the JSON file for deploying Tanzu Kube
       "tmcDetails":{
          "tmcAvailability":"true",
          "tmcRefreshToken":"t9TfXXXXJuMCq3",
-         "tmcInstanceURL": "https://xxxx.tmc.com"
+	 "tmcInstanceURL": "https://xxxx.tmc.com"
       },
       "tanzuObservabilityDetails":{
          "tanzuObservabilityAvailability":"true",
@@ -357,16 +355,7 @@ Service Installer automatically generates the JSON file for deploying Tanzu Kube
          "tkgSharedserviceClusterGroupName":"default",
          "tkgSharedserviceEnableDataProtection":"false",
          "tkgSharedClusterCredential":"",
-         "tkgSharedClusterBackupLocation":"",
-         "tkgSharedClusterVeleroDataProtection":{
-            "enableVelero":"true",
-            "username": "admin",
-            "passwordBase64": "cGFzc3dvcmQ=",
-            "bucketName": "shared-backup",
-            "backupRegion": "minio",
-            "backupS3Url": "http://<minio-server>:9000",
-            "backupPublicUrl": "http://<minio-server>:9000"
-         }
+         "tkgSharedClusterBackupLocation":""
       },
       "tkgMgmtDataNetworkSpec":{
          "tkgMgmtDataGatewayCidr":"11.12.18.14/24",
@@ -408,15 +397,7 @@ Service Installer automatically generates the JSON file for deploying Tanzu Kube
          "tkgWorkloadClusterGroupName":"default",
          "tkgWorkloadEnableDataProtection":"false",
          "tkgWorkloadClusterCredential":"",
-         "tkgWorkloadClusterBackupLocation":"",
-         "tkgWorkloadClusterVeleroDataProtection":{
-            "enableVelero":"true",
-            "username": "admin",
-            "passwordBase64": "cGFzc3dvcmQ=",
-            "bucketName": "workload-backup",
-            "backupS3Url": "http://<minio-server>:9000",
-            "backupPublicUrl": "http://<minio-server>:9000"
-         }
+         "tkgWorkloadClusterBackupLocation":""
       },
       "harborSpec":{
          "enableHarborExtension":"false",

@@ -3,7 +3,6 @@
 
 from flask import Flask, jsonify, send_file
 from flask_restful import Api, request
-from flask_swagger_ui import get_swaggerui_blueprint
 from flask_cors import CORS
 from zipfile import ZipFile
 from vsphere.sharedConfig.vsphere_shared_config import vsphere_shared_config
@@ -13,7 +12,6 @@ from vmc.aviConfig.avi_config import avi_config, configure_alb
 from vsphere.aviConfig.vsphere_avi_config import vcenter_avi_config
 from common.prechecks.precheck import vcenter_precheck
 from common.cleanup.cleanup import cleanup_env
-from common.harbor.push_tkg_image_to_harbor import harbor
 from common.wcp_shutdown.wcp_shutdown import shutdown_env
 from common.prechecks.list_reources import vcenter_resources
 from common.common_utilities import envCheck
@@ -56,30 +54,6 @@ app = Flask(__name__)
 api = Api(app)
 CORS(app)
 
-
-### swagger specific ###
-SWAGGER_URL = '/swagger'
-SWAGGER_BLUEPRINT = get_swaggerui_blueprint(
-    SWAGGER_URL,
-    api_url=None,
-    config={
-        'app_name': "arcas",
-        'layout': "StandaloneLayout",
-        "plugins":['TopBar'],
-         'urls' :[ {'url':'/static/vsphere.json', 'name':'vsphere', 'primaryName':"vsphere"},
-         {'url':'/static/vmc.json', 'name':'vmc','primaryName':"vmc"},
-          {'url':'/static/vcf.json', 'name':'vcf','primaryName':"vcf"},
-         ]
-    },
-    blueprint_name="arcas"
-)
-
-
-
-app.register_blueprint(SWAGGER_BLUEPRINT, url_prefix=SWAGGER_URL)
-   
-### end swagger specific ###
-
 app.logger.addHandler(handler)
 app.logger.addHandler(stdout_handler)
 app.register_blueprint(shared_config, url_prefix="")
@@ -98,7 +72,6 @@ app.register_blueprint(vcenter_precheck, url_prefix="")
 app.register_blueprint(vcenter_resources, url_prefix="")
 app.register_blueprint(tkg_extentions, url_prefix="")
 app.register_blueprint(cleanup_env, url_prefix="")
-app.register_blueprint(harbor, url_prefix="")
 app.register_blueprint(shutdown_env, url_prefix="")
 
 
@@ -110,7 +83,7 @@ def configTkgm():
         d = {
             "responseType": "ERROR",
             "msg": vmc[0].json['msg'],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     avi = configure_alb()
@@ -119,7 +92,7 @@ def configTkgm():
         d = {
             "responseType": "ERROR",
             "msg": str(avi[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     mgmt = configManagementCluster()
@@ -128,7 +101,7 @@ def configTkgm():
         d = {
             "responseType": "ERROR",
             "msg": str(mgmt[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     shared = configSharedCluster()
@@ -137,7 +110,7 @@ def configTkgm():
         d = {
             "responseType": "ERROR",
             "msg": str(shared[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     workLoad = workloadConfig()
@@ -146,13 +119,13 @@ def configTkgm():
         d = {
             "responseType": "ERROR",
             "msg": str(workLoad[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Tkgm configured Successfully ",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     app.logger.info("Tkgm configured Successfully ")
     return jsonify(d), 200
@@ -177,14 +150,14 @@ def createInputFile():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to generate the json file " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     app.logger.info("Successfully generated input file")
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully generated input file",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 

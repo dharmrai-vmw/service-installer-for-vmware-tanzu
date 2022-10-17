@@ -38,7 +38,7 @@ variable "vnet_name" {
 }
 
 variable "subnet_name" {
-  default     = "Admin"
+  default     = "TKGM-Admin"
   description = "Value defined from 1_netsec (user-subnets)"
 }
 

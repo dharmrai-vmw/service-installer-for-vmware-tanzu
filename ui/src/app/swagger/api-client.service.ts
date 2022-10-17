@@ -14,8 +14,7 @@ export class APIClient {
 
     // KUBERNETES BASE IMAGE SUPPORTED VERSIONS
     public baseImage = ['photon', 'ubuntu'];
-    public baseImageVersion154 = ['v1.22.9', 'v1.21.11', 'v1.20.15'];
-    public baseImageVersion = ['v1.23.8', 'v1.22.11', 'v1.21.14'];
+    public baseImageVersion = ['v1.22.9', 'v1.21.11', 'v1.20.15'];
     public AllSupportedCNI = ['antrea', 'calico'];
     public TkgsCertTypes = ['Path', 'Endpoint'];
     public sharedBaseImageVersion = [];
@@ -271,7 +270,7 @@ export class APIClient {
                         "refreshToken": vmcData.refreshToken,
                     }
                 },
-            }
+            }            
         }
         const base_url = this.apiEndPoint + AppApiUrls.URL_SEPARATER + AppApiUrls.BASE_URL;
         const url = base_url + AppApiUrls.URL_SEPARATER + AppApiUrls.ESTABLISH_VMC_SESSION;

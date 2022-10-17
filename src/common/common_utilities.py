@@ -7,10 +7,8 @@ import ssl
 import ipaddress
 import json
 import ntplib
-import hashlib
-import subprocess
 from time import ctime
-from common.operation.constants import AviSize, Extentions, MarketPlaceUrl, ResourcePoolAndFolderName, Cloud, Versions, AkoType, \
+from common.operation.constants import AviSize, MarketPlaceUrl, ResourcePoolAndFolderName, Cloud, Versions, AkoType, \
     CIDR, PLAN, \
     TmcUser, \
     CertName, \
@@ -32,12 +30,11 @@ from common.certificate_base64 import getBase64CertWriteToFile, repoAdd
 from common.operation.ShellHelper import runShellCommandAndReturnOutput, runShellCommandWithPolling, \
     grabKubectlCommand, \
     runShellCommandAndReturnOutputAsList, runProcess, verifyPodsAreRunning, grabPipeOutputChagedDir, \
-    runShellCommandAndReturnOutputAsListWithChangedDir, grabPipeOutput, runProcessTmcMgmt, grabIpAddress
+    runShellCommandAndReturnOutputAsListWithChangedDir, grabPipeOutput, runProcessTmcMgmt
 from common.operation.constants import Env, Avi_Version, Extentions, RegexPattern, Tkg_version, SAS
 from common.operation.constants import Versions, CIDR, TmcUser, \
     CertName, \
-    VrfType, Repo, AppName, Type, VCF, ControllerLocation, KubernetesOva, EnvType, Tkg_Extention_names, VeleroAPI, \
-    Tkgs_Extension_Details
+    VrfType, Repo, AppName, Type, VCF, ControllerLocation, KubernetesOva, EnvType, Tkg_Extention_names, VeleroAPI
 from common.operation.vcenter_operations import createResourcePool, create_folder
 from common.replace_value import generateVsphereConfiguredSubnets, generateVsphereConfiguredSubnetsForSe
 from common.replace_value import replaceValue
@@ -85,7 +82,7 @@ def preChecks():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env type provided " + _env[0] + " please specify vmc or vsphere",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         current_app.logger.error("Wrong env type provided " + _env[0] + " please specify vmc or vsphere")
         return jsonify(d), 500
@@ -109,7 +106,7 @@ def preChecks():
             d = {
                 "responseType": "ERROR",
                 "msg": "Un-Authorized " + str(e),
-                "STATUS_CODE": 401
+                "ERROR_CODE": 401
             }
             return jsonify(d), 401
     else:
@@ -138,13 +135,13 @@ def preChecks():
             d = {
                 "responseType": "ERROR",
                 "msg": f"Un-Authorized {e}",
-                "STATUS_CODE": "401"
+                "ERROR_CODE": "401"
             }
             return jsonify(d), 401
     d = {
         "responseType": "SUCCESS",
         "msg": "Authorized",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -162,7 +159,7 @@ def createResourceFolderAndWait(vcenter_ip, vcenter_username, password,
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -178,7 +175,7 @@ def createResourceFolderAndWait(vcenter_ip, vcenter_username, password,
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create folder " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     find = validateFolderAndResourcesAvailable(folderName, resourcePoolName, vcenter_ip, vcenter_username, password,
@@ -191,13 +188,13 @@ def createResourceFolderAndWait(vcenter_ip, vcenter_username, password,
         d = {
             "responseType": "ERROR",
             "msg": errorMsg,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "ERROR",
         "msg": "Created resources and  folder",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -262,7 +259,7 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
                 d = {
                     "responseType": "ERROR",
                     "msg": "Wrong avi size provided supported  essentials/small/medium/large " + avi_size,
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             if size == "essentials":
@@ -288,16 +285,16 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
                 current_app.logger.error("Failed to get ip of avi controller on waiting 30m")
                 d = {
                     "responseType": "ERROR",
-                    "msg": "Failed to get IP of AVI controller on waiting 30m",
-                    "STATUS_CODE": 500
+                    "msg": "Failed to get ip of avi controller on waiting 30m",
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
     except Exception as e:
-        current_app.logger.error("Failed to deploy the VM from library due to " + str(e))
+        current_app.logger.error("Failed to deploy  the vm from library due to " + str(e))
         d = {
             "responseType": "ERROR",
-            "msg": "Failed to deploy the VM from library due to " + str(e),
-            "STATUS_CODE": 500
+            "msg": "Failed to deploy  the vm from library due to " + str(e),
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     ip = govc_client.get_vm_ip(vm_name, datacenter_name=data_center)[0]
@@ -307,16 +304,16 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
         d = {
             "responseType": "ERROR",
             "msg": "Controller service is not up",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     deployed_avi_version = obtain_avi_version(ip, env)
     if deployed_avi_version[0] is None:
-        current_app.logger.error("Failed to login and obtain AVI version" + str(deployed_avi_version[1]))
+        current_app.logger.error("Failed to login and obtain avi version" + str(deployed_avi_version[1]))
         d = {
             "responseType": "ERROR",
-            "msg": "Failed to login and obtain AVI version " + deployed_avi_version[1],
-            "STATUS_CODE": 500
+            "msg": "Failed to login and obtain avi version " + deployed_avi_version[1],
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     avi_version = deployed_avi_version[0]
@@ -333,7 +330,7 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
             "responseType": "ERROR",
             "msg": "Deployed avi version " + str(
                 avi_version) + " is not supported, supported version is: " + avi_required,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if performOtherTask:
@@ -343,7 +340,7 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get First csrf",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if csrf == "SUCCESS":
@@ -354,7 +351,7 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to set the avi admin password",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         csrf2 = obtain_second_csrf(ip, env)
@@ -363,7 +360,7 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get csrf from new set password",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -373,38 +370,38 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to set the system configuration",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
             current_app.logger.info("Got system configuration successfully")
         if set_dns_ntp_smtp_settings(ip, csrf2, avi_version) is None:
-            current_app.logger.error("Set DNS NTP SMTP failed.")
+            current_app.logger.error("Set Dns Ntp smtp failed.")
             d = {
                 "responseType": "ERROR",
-                "msg": "Set DNS NTP SMTP failed.",
-                "STATUS_CODE": 500
+                "msg": "Set Dns Ntp smtp failed.",
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
-            current_app.logger.info("Set DNS NTP SMTP successfully")
+            current_app.logger.info("Set DNs Ntp Smtp successfully")
         if disable_welcome_screen(ip, csrf2, avi_version, env) is None:
-            current_app.logger.error("Failed to deactivate welcome screen")
+            current_app.logger.error("Failed to disable welcome screen")
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to deactivate welcome screen",
-                "STATUS_CODE": 500
+                "msg": "Failed to disable welcome screen",
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
-            current_app.logger.info("Deactivate welcome screen successfully")
+            current_app.logger.info("Disable welcome screen successfully")
         backup_url = get_backup_configuration(ip, csrf2, avi_version)
         if backup_url[0] is None:
             current_app.logger.error("Failed to get backup configuration")
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get backup configuration " + backup_url[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -416,13 +413,13 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to set backup pass phrase " + str(setBackup[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
-        "msg": "Configured AVI",
-        "STATUS_CODE": 200
+        "msg": "Configured avi",
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1172,7 +1169,7 @@ Environment="NO_PROXY=localhost,127.0.0.1{noProxy}"
             runShellCommandAndReturnOutputAsList(docker_restart)
             return 200
         elif enable_arcas_proxy.lower() == "false":
-            current_app.logger.info("SIVT VM proxy setting is deactivated")
+            current_app.logger.info("SIVT VM proxy setting is disabled")
             return 200
         else:
             current_app.logger.info("Wrong value of SIVT VM proxy enable is provided " + enable_arcas_proxy)
@@ -1260,10 +1257,10 @@ def disableProxyWrapper(env):
                 os.system("systemctl restart docker")
             return 200
         elif disableArcasProxy.lower() == "false":
-            current_app.logger.info("Arcas vm proxy setting is deactivated")
+            current_app.logger.info("Arcas vm proxy setting is disabled")
             return 200
         else:
-            current_app.logger.info("Arcas VM proxy deactivation failed.")
+            current_app.logger.info("Arcas VM proxy disablement failed.")
             return 500
     except Exception as e:
         if str(e).__contains__("proxySpec"):
@@ -1339,7 +1336,7 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, False
     try:
@@ -1374,7 +1371,7 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
             d = {
                 "responseType": "ERROR",
                 "msg": msg1 + " " + msg2,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500, False
         key_name = Path(avi_key).name
@@ -1399,7 +1396,7 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Certificate or key provided is empty",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500, False
         import_cert, error = import_ssl_certificate(ip, csrf2, avi_controller_cert, avi_controller_cert_key, env,
@@ -1408,8 +1405,8 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
             current_app.logger.error("Avi cert import failed " + str(error))
             d = {
                 "responseType": "ERROR",
-                "msg": "AVI cert import failed " + str(error),
-                "STATUS_CODE": 500
+                "msg": "Avi cert import failed " + str(error),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500, False
         cert_name = import_cert['cert_name']
@@ -1419,7 +1416,7 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get certificate status " + str(get_cert[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, False
 
@@ -1438,7 +1435,7 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to generate the ssl certificate " + res[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500, False
     else:
@@ -1449,7 +1446,7 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get current certificate " + get_cert[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, False
     current_app.logger.info("Replacing cert")
@@ -1459,24 +1456,24 @@ def manage_avi_certificates(ip, avi_version, env, avi_fqdn, cert_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed replace the certificate " + replace_cert[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, False
     if license_key:
         res, status = configure_alb_licence(ip, csrf2, license_key, avi_version)
         if res is None:
-            current_app.logger.error("Failed to apply licenses " + str(status))
+            current_app.logger.error("Failed to apply licesnce " + str(status))
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to apply licenses " + str(status),
-                "STATUS_CODE": 500
+                "msg": "Failed to apply licesnce " + str(status),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500, False
         current_app.logger.info(status)
     d = {
         "responseType": "SUCCESS",
         "msg": "Certificate managed successfully",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200, True
 
@@ -1520,7 +1517,7 @@ def registerWithTmc(management_cluster, env, isProxy, type, clusterGroup):
             d = {
                 "responseType": "ERROR",
                 "msg": proxy_cred_state[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         proxy_name = "arcas-" + management_cluster + "-tmc-proxy"
@@ -1547,8 +1544,8 @@ def registerWithTmc(management_cluster, env, isProxy, type, clusterGroup):
             runProcess(listOfCommandRegister)
 
         current_app.logger.info("Registered to tmc")
-        current_app.logger.info("Waiting for 5 min for health status = ready…")
-        for i in tqdm(range(300), desc="Waiting for health status…", ascii=False, ncols=75):
+        current_app.logger.info("Waiting for 2 min for health status = ready…")
+        for i in tqdm(range(120), desc="Waiting for health status…", ascii=False, ncols=75):
             time.sleep(1)
         state = checkClusterStateOnTmc(management_cluster, True)
         if state[0] == "SUCCESS":
@@ -1894,7 +1891,7 @@ def dockerLoginAndConnectivityCheck(env):
         d = {
             "responseType": "ERROR",
             "msg": "TMC configuration is not supported on air gapped and proxy enabled environment",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if checkAirGappedIsEnabled(env):
@@ -1906,7 +1903,7 @@ def dockerLoginAndConnectivityCheck(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "No repository provided",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         os.putenv("TKG_BOM_IMAGE_TAG", Tkg_version.TAG)
@@ -1926,7 +1923,7 @@ def dockerLoginAndConnectivityCheck(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "Invalid url provided url must start with http:// or https:// but found " + repository,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         try:
@@ -1936,7 +1933,7 @@ def dockerLoginAndConnectivityCheck(env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "No connectivity  to repository " + repository,
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         except Exception as e:
@@ -1944,46 +1941,31 @@ def dockerLoginAndConnectivityCheck(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "No connectivity  to repository " + str(e),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         isSelfsinged = str(request.get_json(force=True)['envSpec']['customRepositorySpec'][
                                'tkgCustomImageRepositoryPublicCaCert'])
         s = air_gapped_repo[:air_gapped_repo.find("/")]
         if isSelfsinged.lower() == "false":
-            isAlreadyAdded = False
+            repoAdd(grabHostFromUrl(air_gapped_repo), grabPortFromUrl(air_gapped_repo))
             try:
-                with open("isCertAdded.txt", "r") as  e:
-                    data = e.read()
-                if data.strip("\n").strip("\r").strip() == "true":
-                    isAlreadyAdded = True
-                else:
-                    isAlreadyAdded = False
-            except:
-                pass
-            if not isAlreadyAdded:
-                repoAdd(grabHostFromUrl(air_gapped_repo), grabPortFromUrl(air_gapped_repo))
-                getBase64CertWriteToFile(grabHostFromUrl(air_gapped_repo), grabPortFromUrl(air_gapped_repo))
-                with open('cert.txt', 'r') as file2:
-                    repo_cert = file2.readline()
-                repo_certificate = repo_cert
-                os.putenv("TKG_CUSTOM_IMAGE_REPOSITORY_SKIP_TLS_VERIFY", "False")
-                os.putenv("TKG_CUSTOM_IMAGE_REPOSITORY_CA_CERTIFICATE", repo_certificate)
-                try:
-                    cmd_doc = ["systemctl", "restart", "docker"]
-                    runShellCommandWithPolling(cmd_doc)
-                except Exception as e:
-                    current_app.logger.error("Failed to restart docker " + str(e))
-                    d = {
-                        "responseType": "ERROR",
-                        "msg": "Failed to restart docker " + str(e),
-                        "STATUS_CODE": 500
-                    }
-                    return jsonify(d), 500
-                current_app.logger.info("Docker restarted waiting for 2 min for all pods up and running")
-                with open("isCertAdded.txt", "w") as  e:
-                    e.write("true")
-                time.sleep(120)
+                cmd_doc = ["systemctl", "restart", "docker"]
+                runShellCommandWithPolling(cmd_doc)
+            except Exception as e:
+                current_app.logger.error("Failed to restart docker " + str(e))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to restart docker " + str(e),
+                    "ERROR_CODE": 500
+                }
+                return jsonify(d), 500
+            getBase64CertWriteToFile(grabHostFromUrl(air_gapped_repo), grabPortFromUrl(air_gapped_repo))
+            with open('cert.txt', 'r') as file2:
+                repo_cert = file2.readline()
+            repo_certificate = repo_cert
+            os.putenv("TKG_CUSTOM_IMAGE_REPOSITORY_SKIP_TLS_VERIFY", "False")
+            os.putenv("TKG_CUSTOM_IMAGE_REPOSITORY_CA_CERTIFICATE", repo_certificate)
         else:
             os.putenv("TKG_CUSTOM_IMAGE_REPOSITORY_SKIP_TLS_VERIFY", "False")
         try:
@@ -2005,28 +1987,28 @@ def dockerLoginAndConnectivityCheck(env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Docker login failed " + str(sta[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Docker login success")
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Docker login success",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         current_app.logger.info("Airgapped precheck successfull")
         d = {
             "responseType": "SUCCESS",
             "msg": "Airgapped pre-check successful",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
         d = {
             "responseType": "SUCCESS",
             "msg": "Air gapped not enabled",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -2159,7 +2141,7 @@ def switchToContext(clusterName, env):
         d = {
             "responseType": "ERROR",
             "msg": "Failed get admin cluster context of cluster " + clusterName,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -2169,7 +2151,7 @@ def switchToContext(clusterName, env):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to switch to " + clusterName + " cluster context " + str(status[0]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -2177,7 +2159,7 @@ def switchToContext(clusterName, env):
     d = {
         "responseType": "ERROR",
         "msg": "Switched to " + clusterName + " context",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -2190,7 +2172,7 @@ def switchToManagementContext(clusterName):
         d = {
             "responseType": "ERROR",
             "msg": "Failed get admin cluster context of cluster " + clusterName,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -2200,7 +2182,7 @@ def switchToManagementContext(clusterName):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to switch to " + clusterName + " cluster context " + str(status[0]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -2208,7 +2190,7 @@ def switchToManagementContext(clusterName):
     d = {
         "responseType": "ERROR",
         "msg": "Switched to " + clusterName + " context",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -2229,14 +2211,14 @@ def waitForProcess(list1, podName):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, count_cert
     current_app.logger.info("Successfully running " + podName)
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully running" + podName,
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200, count_cert
 
@@ -2257,14 +2239,14 @@ def waitForProcessWithStatus(list1, podName, status):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, count_cert
     current_app.logger.info("Successfully running " + podName)
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully running" + podName,
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200, count_cert
 
@@ -2286,7 +2268,7 @@ def installCertManagerAndContour(env, cluster_name, repo_address, service_name):
         d = {
             "responseType": "ERROR",
             "msg": cluster_name + " is not deployed",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if isEnvTkgs_ns(env) or isEnvTkgs_wcp(env):
@@ -2298,7 +2280,7 @@ def installCertManagerAndContour(env, cluster_name, repo_address, service_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get management cluster",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     if str(mgmt).strip() == cluster_name.strip():
@@ -2308,7 +2290,7 @@ def installCertManagerAndContour(env, cluster_name, repo_address, service_name):
             d = {
                 "responseType": "ERROR",
                 "msg": switch[0].json['msg'],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -2324,7 +2306,7 @@ def installCertManagerAndContour(env, cluster_name, repo_address, service_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to " + cluster_name + " context command",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -2334,21 +2316,21 @@ def installCertManagerAndContour(env, cluster_name, repo_address, service_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to " + cluster_name + " context " + str(status[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     if Tkg_version.TKG_VERSION == "1.3":
         state = extentionDeploy13(service_name, repo_address)
         if state[1] != 200:
             return state[0], state[1]
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         status_ = checkRepositoryAdded(env)
         if status_[1] != 200:
             current_app.logger.error(str(status_[0].json['msg']))
             d = {
                 "responseType": "ERROR",
                 "msg": str(status_[0].json['msg']),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         install = installExtentionFor14(service_name, cluster_name, env)
@@ -2357,8 +2339,8 @@ def installCertManagerAndContour(env, cluster_name, repo_address, service_name):
     current_app.logger.info("Configured cert-manager and contour successfully")
     d = {
         "responseType": "SUCCESS",
-        "msg": "Configured cert-manager and contour extensions successfully",
-        "STATUS_CODE": 200
+        "msg": "Configured cert-manager and contour extentions successfully",
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -2381,7 +2363,7 @@ def waitForGrepProcess(list1, list2, podName, dir):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to verify pod running",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, count_cert
     if not running:
@@ -2389,13 +2371,13 @@ def waitForGrepProcess(list1, list2, podName, dir):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, count_cert
     d = {
         "responseType": "ERROR",
         "msg": "Successfully running " + podName + " ",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200, count_cert
 
@@ -2418,7 +2400,7 @@ def waitForGrepProcessWithoutChangeDir(list1, list2, podName, status):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to verify pod running",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, count_cert
     if not running:
@@ -2426,13 +2408,13 @@ def waitForGrepProcessWithoutChangeDir(list1, list2, podName, status):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500, count_cert
     d = {
         "responseType": "ERROR",
         "msg": "Successfully running " + podName + " ",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200, count_cert
 
@@ -2475,7 +2457,7 @@ def changeRepo(repo_address):
     d = {
         "responseType": "SUCCESS",
         "msg": "Changed repo of cert manager Successfully",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -2491,7 +2473,7 @@ def deployExtention(extentionYaml, appName, nameSpace, extentionLocation):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to apply " + str(state_harbor_apply[0]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -2504,7 +2486,7 @@ def deployExtention(extentionYaml, appName, nameSpace, extentionLocation):
         d = {
             "responseType": "SUCCESS",
             "msg": appName + " deployed, and is up and running",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -2607,8 +2589,8 @@ def createProxyCredentialsTMC(env, clusterName, isProxy, type, register=True):
                     request.get_json(force=True)['envSpec']['proxySpec']['tkgMgmt']['noProxy'])
                 noProxy = noProxy.strip("\n").strip(" ").strip("\r")
 
-            # if noProxy:
-            # noProxy = noProxy + ", " + pod_cidr + ", " + service_cidr
+            if noProxy:
+                noProxy = noProxy + ", " + pod_cidr + ", " + service_cidr
             try:
                 if '@' in httpProxy:
                     http_proxy = httpProxy.split(":")
@@ -2623,9 +2605,6 @@ def createProxyCredentialsTMC(env, clusterName, isProxy, type, register=True):
                     _base64_bytes = http_password.encode('ascii')
                     _enc_bytes = base64.b64encode(_base64_bytes)
                     http_password = _enc_bytes.decode('ascii')
-                    http_url_string = httpProxy.split("@")
-                    httpProxy = http_url_string[0].split("//")[0] + "//" + http_url_string[1]
-
                 else:
                     http_user = ""
                     http_password = ""
@@ -2643,8 +2622,6 @@ def createProxyCredentialsTMC(env, clusterName, isProxy, type, register=True):
                     _base64_bytes = https_password.encode('ascii')
                     _enc_bytes = base64.b64encode(_base64_bytes)
                     https_password = _enc_bytes.decode('ascii')
-                    http_url_string = httpsProxy.split("@")
-                    httpsProxy = http_url_string[0].split("//")[0] + "//" + http_url_string[1]
                 else:
                     https_user = ""
                     https_password = ""
@@ -2653,7 +2630,7 @@ def createProxyCredentialsTMC(env, clusterName, isProxy, type, register=True):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Proxy url must be in the format http://<Proxy_User>:<URI_EncodedProxy_Password>@<Proxy_IP>:<Proxy_Port> or http://<Proxy_IP>:<Proxy_Port> ",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             generateTmcProxyYaml(name, httpProxy, httpsProxy, noProxy, http_user, http_password, https_user,
@@ -2661,16 +2638,13 @@ def createProxyCredentialsTMC(env, clusterName, isProxy, type, register=True):
             credential = ["tmc", "account", "credential", "create", "-f", "tmc_proxy.yaml"]
             state_cred = runShellCommandAndReturnOutput(credential)
             if state_cred[1] != 0:
-                if str(state_cred[0]).__contains__("AlreadyExists"):
-                    current_app.logger.info("Tmc credential " + name + " is already created")
-                else:
-                    current_app.logger.error("Failed to run create credential" + str(state_cred[0]))
-                    d = {
-                        "responseType": "ERROR",
-                        "msg": "Failed to run validate repository added command " + str(state_cred[0]),
-                        "STATUS_CODE": 500
-                    }
-                    return jsonify(d), 500
+                current_app.logger.error("Failed to run create credential" + str(state_cred[0]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to run validate repository added command " + str(state_cred[0]),
+                    "ERROR_CODE": 500
+                }
+                return jsonify(d), 500
             current_app.logger.info("Successfully created credentials for TMC Proxy")
             return name, 200
         current_app.logger.info("Proxy credential configuration not required")
@@ -2679,9 +2653,9 @@ def createProxyCredentialsTMC(env, clusterName, isProxy, type, register=True):
         d = {
             "responseType": "ERROR",
             "msg": "Proxy credential creation on TMC failed for cluster " + clusterName + " " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 200
         }
-        return jsonify(d), 500
+        return jsonify(d), 200
 
 
 def registerWithTmcOnSharedAndWorkload(env, clusterName, isProxy, type):
@@ -2693,7 +2667,7 @@ def registerWithTmcOnSharedAndWorkload(env, clusterName, isProxy, type):
                 d = {
                     "responseType": "ERROR",
                     "msg": proxy_cred_state[0],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             name = "arcas-" + clusterName + "-tmc-proxy"
@@ -2712,28 +2686,28 @@ def registerWithTmcOnSharedAndWorkload(env, clusterName, isProxy, type):
             except:
                 d = {
                     "responseType": "ERROR",
-                    "msg": "Failed to attach " + clusterName + "  to TMC",
-                    "STATUS_CODE": 500
+                    "msg": "Filed to attach " + clusterName + "  to tmc",
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             d = {
                 "responseType": "SUCCESS",
-                "msg": clusterName + " cluster attached to TMC successfully",
-                "STATUS_CODE": 200
+                "msg": clusterName + " cluster attached to tmc successfully",
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         else:
             d = {
                 "responseType": "SUCCESS",
-                "msg": clusterName + " Cluster is already attached to TMC",
-                "STATUS_CODE": 200
+                "msg": clusterName + " Cluster is already attached to tmc",
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
-            "msg": "TMC registration failed on cluster " + clusterName + " " + str(e),
-            "STATUS_CODE": 200
+            "msg": "Tmc registration failed on cluster " + clusterName + " " + str(e),
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -2749,7 +2723,7 @@ def checkRepositoryAdded(env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to run validate repository added command " + str(str[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             REPOSITORY_URL = request.get_json(force=True)['envSpec']['customRepositorySpec'][
@@ -2764,7 +2738,7 @@ def checkRepositoryAdded(env):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to run command to add repository " + str(str[0]),
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 status = runShellCommandAndReturnOutputAsList(validate_command)
@@ -2773,7 +2747,7 @@ def checkRepositoryAdded(env):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to run validate repository added command " + str(str[0]),
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -2781,15 +2755,15 @@ def checkRepositoryAdded(env):
             current_app.logger.info("Successfully  added repository " + REPOSITORY_URL)
             d = {
                 "responseType": "SUCCESS",
-                "msg": "Successfully added repository " + REPOSITORY_URL,
-                "STATUS_CODE": 200
+                "msg": "Successfully  added repository " + REPOSITORY_URL,
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         except Exception as e:
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to add repository " + str(e),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -2801,7 +2775,7 @@ def checkRepositoryAdded(env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to run validate repository added command " + str(str[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             if not str(status[0]).__contains__(TKG_Package_Details.STANDARD_PACKAGE_URL):
@@ -2814,7 +2788,7 @@ def checkRepositoryAdded(env):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to run command to add repository " + str(str[0]),
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 status = runShellCommandAndReturnOutputAsList(validate_command)
@@ -2823,7 +2797,7 @@ def checkRepositoryAdded(env):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to run validate repository added command " + str(str[0]),
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -2832,14 +2806,14 @@ def checkRepositoryAdded(env):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Successfully validated repository " + TKG_Package_Details.REPOSITORY_URL,
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         except Exception as e:
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to validate tanzu standard repository status" + str(e),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -2867,14 +2841,14 @@ def checkPinnipedInstalled():
             d = {
                 "responseType": "ERROR",
                 "msg": "Pinniped is not in RECONCILE SUCCEEDED state on waiting " + str(count_pinniped * 30),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     current_app.logger.info("Successfully validated Pinniped installation")
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully validated Pinniped installation",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -2918,7 +2892,7 @@ def checkPinnipedDexServiceStatus():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to retrieve dexsvc Load Balancers' External IP",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         return "Failed to retrieve dexsvc Load Balancers' External IP", 500
@@ -2935,7 +2909,7 @@ def createRbacUsers(clusterName, isMgmt, env, cluster_admin_users, admin_users, 
                 d = {
                     "responseType": "ERROR",
                     "msg": switch[0].json['msg'],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         else:
@@ -2945,7 +2919,7 @@ def createRbacUsers(clusterName, isMgmt, env, cluster_admin_users, admin_users, 
                 d = {
                     "responseType": "ERROR",
                     "msg": switch[0].json['msg'],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         if isMgmt:
@@ -2968,7 +2942,7 @@ def createRbacUsers(clusterName, isMgmt, env, cluster_admin_users, admin_users, 
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to export config file to " + Paths.CLUSTER_PATH + clusterName + "/" + "crb-kubeconfig",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -3005,14 +2979,14 @@ def createRbacUsers(clusterName, isMgmt, env, cluster_admin_users, admin_users, 
                         d = {
                             "responseType": "ERROR",
                             "msg": "Failed to created Cluster Role Binding for user: " + username,
-                            "STATUS_CODE": 500
+                            "ERROR_CODE": 500
                         }
                         return jsonify(d), 500
 
         d = {
             "responseType": "SUCCESS",
             "msg": "Created RBAC successfully for all the provided users",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -3021,7 +2995,7 @@ def createRbacUsers(clusterName, isMgmt, env, cluster_admin_users, admin_users, 
         d = {
             "responseType": "ERROR",
             "msg": "Some error occurred while creating cluster role bindings",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -3038,7 +3012,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get Version of package cert-manager.tanzu.vmware.com",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Installing cert manager - " + state)
@@ -3056,7 +3030,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to bring cert-manager " + str(certManagerStatus[0].json['msg']),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Configured Cert manager successfully")
@@ -3064,7 +3038,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Configured Cert manager successfully",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
         else:
@@ -3073,7 +3047,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Cert manager is already running",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
     if service == "ingress" or service == "all":
@@ -3085,7 +3059,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Ako pod is not running " + str(command_status_ako[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         sub_command = ["grep", AppName.CONTOUR]
@@ -3097,7 +3071,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get Version of package contour.tanzu.vmware.com",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Installing contour - " + state)
@@ -3118,7 +3092,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to bring contour " + str(certManagerStatus[0].json['msg']),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             if service != "all":
@@ -3126,7 +3100,7 @@ def installExtentionFor14(service_name, cluster, env):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Contour deployed and is up and running",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
         else:
@@ -3134,13 +3108,13 @@ def installExtentionFor14(service_name, cluster, env):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Contour is already up and running",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     d = {
         "responseType": "SUCCESS",
-        "msg": "Configured cert-manager and contour extensions successfully",
-        "STATUS_CODE": 200
+        "msg": "Configured cert-manager and contour extentions successfully",
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -3214,7 +3188,7 @@ def extentionDeploy13(service_name, repo_address):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to load the bom data",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     service = service_name
@@ -3226,7 +3200,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": repo_status[0].json['msg'],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Install Cert Manger")
@@ -3239,11 +3213,11 @@ def extentionDeploy13(service_name, repo_address):
                 state2 = runShellCommandAndReturnOutputAsListWithChangedDir(command_cert_manager,
                                                                             Extentions.TKG_EXTENTION_LOCATION)
                 if state2[1] != 0:
-                    current_app.logger.error("Failed to apply cert-manager " + str(state2[0]))
+                    current_app.logger.error("Failed to apply certmanager " + str(state2[0]))
                     d = {
                         "responseType": "ERROR",
-                        "msg": "Failed to apply cert-manager " + str(state2[0]),
-                        "STATUS_CODE": 500
+                        "msg": "Failed to apply certmanager " + str(state2[0]),
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -3255,7 +3229,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply cert-manager " + str(state[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             list1 = ["kubectl", "get", "pods", "-A"]
@@ -3266,7 +3240,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply kapp " + str(wait[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             if wait[2] > 30:
@@ -3277,7 +3251,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Configured Cert manager successfully",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
         else:
@@ -3286,7 +3260,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Cert manager is already running",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
     if service == "ingress" or service == "all":
@@ -3304,11 +3278,11 @@ def extentionDeploy13(service_name, repo_address):
                 state_contour = runShellCommandAndReturnOutputAsListWithChangedDir(command_contour,
                                                                                    Extentions.CONTOUR_LOCATION)
                 if state_contour[1] != 0:
-                    current_app.logger.error("Failed to apply contour " + str(state_contour[0]))
+                    current_app.logger.error("Failed to apply countour " + str(state_contour[0]))
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to apply contour " + str(state_contour[0]),
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -3326,7 +3300,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to change contour repo " + str(state_change_repo_contour[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             try:
@@ -3337,7 +3311,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get tag  " + str(e),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             os.system(
@@ -3355,7 +3329,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply contour copy " + str(state_contour_copy[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -3370,7 +3344,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply contour secret " + str(state_contour_secret[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             change_repo_contour_extention = ["sh", "./common/injectValue.sh",
@@ -3384,7 +3358,7 @@ def extentionDeploy13(service_name, repo_address):
                     "responseType": "ERROR",
                     "msg": "Failed to change contour repo in extension file  " + str(
                         state_change_repo_contour_extention[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             command_contour = ["kubectl", "apply", "-f", "contour-extension.yaml"]
@@ -3395,7 +3369,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply contour" + str(command_contour_out[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Validating contour app is running")
@@ -3406,7 +3380,7 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply contour secret " + str(contourStatus[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -3415,7 +3389,7 @@ def extentionDeploy13(service_name, repo_address):
                     d = {
                         "responseType": "SUCCESS",
                         "msg": "Contour deployed and is up and running",
-                        "STATUS_CODE": 200
+                        "ERROR_CODE": 200
                     }
                     return jsonify(d), 200
         else:
@@ -3424,14 +3398,14 @@ def extentionDeploy13(service_name, repo_address):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Contour is up and running",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
 
     d = {
         "responseType": "SUCCESS",
-        "msg": "All extensions configured on 1.3 version of Tanzu",
-        "STATUS_CODE": 200
+        "msg": "All extentions configured on 1.3 version of tanzu",
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -3458,7 +3432,7 @@ def deployCluster(sharedClusterName, clusterPlan, datacenter, dataStorePath,
                                               sshKey, vsphereUseName, machineCount, size, env, type, vsSpec)
             current_app.logger.info("Deploying " + sharedClusterName + "cluster")
             os.putenv("DEPLOY_TKG_ON_VSPHERE7", "true")
-            if Tkg_version.TKG_VERSION == "1.6":
+            if Tkg_version.TKG_VERSION == "1.5":
                 # if checkAirGappedIsEnabled(env):
                 # full_name = getKubeVersionFullNameNoCompatibilityCheck(kubeVersion)
                 # if full_name[1] != 200:
@@ -3484,7 +3458,7 @@ def deployCluster(sharedClusterName, clusterPlan, datacenter, dataStorePath,
 def generateClusterYaml(sharedClusterName, clusterPlan, datacenter, dataStorePath,
                         folderPath, mgmt_network, vspherePassword, sharedClusterResourcePool, vsphereServer,
                         sshKey, vsphereUseName, machineCount, size, env, type, vsSpec):
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         return template14deployYaml(sharedClusterName, clusterPlan, datacenter, dataStorePath,
                                     folderPath, mgmt_network, vspherePassword, sharedClusterResourcePool, vsphereServer,
                                     sshKey, vsphereUseName, machineCount, size, env, type, vsSpec)
@@ -4108,7 +4082,7 @@ def registerTanzuObservability(cluster_name, env, size):
                         "responseType": "ERROR",
                         "msg": "Minimum required number of worker nodes to SaaS integrations is 3, "
                                "and recommended size is medium and above",
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -4116,7 +4090,7 @@ def registerTanzuObservability(cluster_name, env, size):
                     # d = {
                     #     "responseType": "ERROR",
                     #     "msg": "Tanzu Observability integration is not supported on cluster size small or medium",
-                    #     "STATUS_CODE": 500
+                    #     "ERROR_CODE": 500
                     # }
                     # return jsonify(d), 500
                     current_app.logger.debug("Recommended to use large/extra-large for Tanzu Observability integration")
@@ -4125,15 +4099,15 @@ def registerTanzuObservability(cluster_name, env, size):
         else:
             d = {
                 "responseType": "SUCCESS",
-                "msg": "Tanzu observability is deactivated",
-                "STATUS_CODE": 200
+                "msg": "Tanzu observability is disabled",
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": "Failed to register tanzu Observability " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -4147,7 +4121,7 @@ def registerTSM(cluster_name, env, size):
                         "responseType": "ERROR",
                         "msg": "Minimum required number of worker nodes to SaaS integrations is 3, "
                                "and recommended size is medium and above",
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -4155,7 +4129,7 @@ def registerTSM(cluster_name, env, size):
                     # d = {
                     #     "responseType": "ERROR",
                     #     "msg": "Tanzu service mesh integration is not supported on cluster size small or medium",
-                    #     "STATUS_CODE": 500
+                    #     "ERROR_CODE": 500
                     # }
                     # return jsonify(d), 500
                     current_app.logger.debug("Recommended to use large/extra-large for Tanzu service mesh integration")
@@ -4164,15 +4138,15 @@ def registerTSM(cluster_name, env, size):
         else:
             d = {
                 "responseType": "SUCCESS",
-                "msg": "Tanzu Service Mesh is deactivated",
-                "STATUS_CODE": 200
+                "msg": "Tanzu Service Mesh is disabled",
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": "Failed to register Tanzu Service Mesh " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -4195,14 +4169,14 @@ def inegrateSas(cluster_name, env, sasType):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch management cluster list",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if cluster_name in output[0]:
             d = {
                 "responseType": "ERROR",
                 "msg": "Tanzu " + sasType + " registration is not supported on management cluster",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         context = connect_to_workload(vcenter_ip, vcenter_username, password, cluster, cluster_name)
@@ -4210,7 +4184,7 @@ def inegrateSas(cluster_name, env, sasType):
             d = {
                 "responseType": "ERROR",
                 "msg": context[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -4223,30 +4197,30 @@ def inegrateSas(cluster_name, env, sasType):
         if not checkTmcEnabled(env):
             d = {
                 "responseType": "ERROR",
-                "msg": "TMC is not enabled, tmc must be enabled to register tanzu " + sasType,
-                "STATUS_CODE": 500
+                "msg": "Tmc is not enabled, tmc must be enabled to register tanzu " + sasType,
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if not isEnvTkgs_ns(env):
             if not verifyCluster(cluster_name):
                 d = {
                     "responseType": "ERROR",
-                    "msg": cluster_name + " is not registered to TMC, cluster must be registered to TMC first to register tanzu " + sasType,
-                    "STATUS_CODE": 500
+                    "msg": cluster_name + " is not registered to Tmc, cluster  must be registered to tmc first to resgister tanzu " + sasType,
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             if getManagementCluster() == cluster_name:
                 d = {
                     "responseType": "ERROR",
                     "msg": "Tanzu " + sasType + " registration is not supported on management cluster",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         if checkClusterStateOnTmc(cluster_name, False) is None:
             d = {
                 "responseType": "ERROR",
-                "msg": "Cluster on TMC is not in healthy state " + cluster_name,
-                "STATUS_CODE": 500
+                "msg": "Cluster on tmc is not in healthy state " + cluster_name,
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if sasType == SAS.TO:
@@ -4304,20 +4278,20 @@ def inegrateSas(cluster_name, env, sasType):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to register tanzu " + sasType + " to " + cluster_name,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         d = {
             "responseType": "SUCCESS",
             "msg": "Tanzu " + sasType + " is integrated successfully to cluster " + cluster_name,
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
         d = {
             "responseType": "SUCCESS",
             "msg": "Tanzu " + sasType + " is already registered to " + cluster_name,
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -4441,7 +4415,7 @@ def checkClusterSizeForTo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "TMC is not enabled, for SaaS integration TMC must be enabled",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if env == Env.VMC:
@@ -4459,26 +4433,26 @@ def checkClusterSizeForTo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": msg_text,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         d = {
             "responseType": "SUCCESS",
             "msg": "Cluster size verified",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
         if isTo:
-            msg_text = "Tanzu Observability integration is deactivated"
+            msg_text = "Tanzu Observability integration is disabled"
         elif isTsm:
-            msg_text = "Tanzu Service Mesh integration is deactivated"
+            msg_text = "Tanzu Service Mesh integration is disabled"
         else:
-            msg_text = "Both Tanzu Service Mesh and  Tanzu Observability integration is deactivated"
+            msg_text = "Both Tanzu Service Mesh and  Tanzu Observability integration is disabled"
         d = {
             "responseType": "SUCCESS",
             "msg": msg_text,
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -4515,27 +4489,27 @@ def checkMachineCountForTsm(env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Tanzu Service Mesh integration is not supported for machine count less then 3  for workload cluster",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         except Exception as e:
             d = {
                 "responseType": "ERROR",
                 "msg": "Not found key " + str(e),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         d = {
             "responseType": "SUCCESS",
             "msg": "Tanzu Service Mesh cluster size verified",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
         d = {
             "responseType": "SUCCESS",
-            "msg": "Tanzu Service Mesh integration is deactivated",
-            "STATUS_CODE": 200
+            "msg": "Tanzu Service Mesh integration is disabled",
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -4584,7 +4558,7 @@ def checkMachineCountForProdType(env, isShared, isWorkload):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Min worker machine count for a prod deployment plan on shared services cluster is 3!",
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Successfully validated worker machine count for shared services cluster")
@@ -4597,14 +4571,14 @@ def checkMachineCountForProdType(env, isShared, isWorkload):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Min worker machine count for a prod deployment plan on workload cluster is 3!",
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Successfully validated worker machine count for workload cluster")
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully validated worker machine count",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
@@ -4612,7 +4586,7 @@ def checkMachineCountForProdType(env, isShared, isWorkload):
         d = {
             "responseType": "ERROR",
             "msg": "Not found key " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -4658,11 +4632,11 @@ def createVcfDhcpServer():
     try:
         headers_ = grabNsxtHeaders()
         if headers_[0] is None:
-            current_app.logger.error("Failed to get NSXT info " + str(headers_[1]))
+            current_app.logger.error("Failed to nsxt info " + str(headers_[1]))
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to get NSXT info " + str(headers_[1]),
-                "STATUS_CODE": 500
+                "msg": "Failed to nsxt info " + str(headers_[1]),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         uri = "https://" + headers_[2] + "/policy/api/v1/infra/dhcp-server-configs"
@@ -4672,7 +4646,7 @@ def createVcfDhcpServer():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get DHCP info on NSXT " + str(output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         tier_path = getTier1Details(headers_)
@@ -4680,7 +4654,7 @@ def createVcfDhcpServer():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get Tier1 details " + str(tier_path[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         url = "https://" + headers_[2] + "/policy/api/v1" + str(tier_path[0])
@@ -4691,7 +4665,7 @@ def createVcfDhcpServer():
             d = {
                 "responseType": "ERROR",
                 "msg": dhcp_state.text,
-                "STATUS_CODE": dhcp_state.status_code
+                "ERROR_CODE": dhcp_state.status_code
             }
             current_app.logger.error(dhcp_state.text)
             return jsonify(d), dhcp_state.status_code
@@ -4721,29 +4695,29 @@ def createVcfDhcpServer():
                     d = {
                         "responseType": "ERROR",
                         "msg": dhcp_create.text,
-                        "STATUS_CODE": dhcp_create.status_code
+                        "ERROR_CODE": dhcp_create.status_code
                     }
                     current_app.logger.error(dhcp_create.text)
                     return jsonify(d), dhcp_create.status_code
                 msg_text = "Created DHCP server " + VCF.DHCP_SERVER_NAME
                 current_app.logger.info(msg_text)
             else:
-                msg_text = VCF.DHCP_SERVER_NAME + " DHCP server is already created"
+                msg_text = VCF.DHCP_SERVER_NAME + " dhcp server is already created"
                 current_app.logger.info(msg_text)
         else:
-            msg_text = "DHCP server is already present in tier1"
+            msg_text = "Dhcp server is already present in tier1"
         d = {
             "responseType": "SUCCESS",
             "msg": msg_text,
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
-        current_app.logger.error("Failed to create DHCP server " + str(e))
+        current_app.logger.error("Failed to create Dhcp server " + str(e))
         d = {
             "responseType": "ERROR",
-            "msg": "Failed to create DHCP server " + str(e),
-            "STATUS_CODE": 500
+            "msg": "Failed to create Dhcp server " + str(e),
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -4752,11 +4726,11 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
     try:
         headers_ = grabNsxtHeaders()
         if headers_[0] is None:
-            current_app.logger.error("Failed to get NSXT info " + str(headers_[1]))
+            current_app.logger.error("Failed to nsxt info " + str(headers_[1]))
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to get NSXT info " + str(headers_[1]),
-                "STATUS_CODE": 500
+                "msg": "Failed to nsxt info " + str(headers_[1]),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         uri = "https://" + headers_[2] + "/policy/api/v1/infra/segments"
@@ -4765,7 +4739,7 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get list of segments " + str(output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         overlay = str(request.get_json(force=True)['envSpec']['vcenterDetails']["nsxtOverlay"])
@@ -4774,8 +4748,8 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
         if trz[0] is None:
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to get transport zone ID " + str(trz[1]),
-                "STATUS_CODE": 500
+                "msg": "Failed to get transport zone id " + str(trz[1]),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         tier_path = getTier1Details(headers_)
@@ -4783,7 +4757,7 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get Tier1 details " + str(tier_path[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if not checkObjectIsPresentAndReturnPath(output[0], segementName)[0]:
@@ -4851,7 +4825,7 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
                 d = {
                     "responseType": "ERROR",
                     "msg": dhcp_create.text,
-                    "STATUS_CODE": dhcp_create.status_code
+                    "ERROR_CODE": dhcp_create.status_code
                 }
                 current_app.logger.error(dhcp_create.text)
                 return jsonify(d), dhcp_create.status_code
@@ -4865,7 +4839,7 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
         d = {
             "responseType": "SUCCESS",
             "msg": msg_text,
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
 
@@ -4873,8 +4847,8 @@ def createNsxtSegment(segementName, gatewayAddress, dhcpStart, dhcpEnd, dnsServe
         current_app.logger.error("Failed to create Nsxt segment " + str(e))
         d = {
             "responseType": "ERROR",
-            "msg": "Failed to create NSXT segment " + str(e),
-            "STATUS_CODE": 500
+            "msg": "Failed to create Nsxt segment " + str(e),
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -4972,8 +4946,8 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
         if headers_[0] is None:
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to get NSXT info " + str(headers_[1]),
-                "STATUS_CODE": 500
+                "msg": "Failed to nsxt info " + str(headers_[1]),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         domainName = getDomainName(headers_, "default")
@@ -4981,7 +4955,7 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get domain name " + str(domainName[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         uri = "https://" + headers_[2] + "/policy/api/v1/infra/domains/" + domainName[0] + "/groups"
@@ -4990,7 +4964,7 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get list of domain " + str(output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if segmentName is not None:
@@ -5000,7 +4974,7 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get list of segments " + str(seg_output[0]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             seg_obj = checkObjectIsPresentAndReturnPath(seg_output[0], segmentName)
@@ -5008,7 +4982,7 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to find the segment " + segmentName,
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         url = "https://" + headers_[2] + "/policy/api/v1/infra/domains/" + domainName[0] + "/groups/" + groupName
@@ -5117,7 +5091,7 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
                 d = {
                     "responseType": "ERROR",
                     "msg": dhcp_create.text,
-                    "STATUS_CODE": dhcp_create.status_code
+                    "ERROR_CODE": dhcp_create.status_code
                 }
                 current_app.logger.error(dhcp_create.text)
                 return jsonify(d), dhcp_create.status_code
@@ -5131,14 +5105,14 @@ def createGroup(groupName, segmentName, isIp, ipaddresses):
             "responseType": "SUCCESS",
             "msg": msg_text,
             "path": path,
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create group " + groupName + " " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -5160,8 +5134,8 @@ def createVipService(serviceName, port):
     if headers_[0] is None:
         d = {
             "responseType": "ERROR",
-            "msg": "Failed to get NSXT info " + str(headers_[1]),
-            "STATUS_CODE": 500
+            "msg": "Failed to nsxt info " + str(headers_[1]),
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     service = isServiceCreated(headers_, serviceName)
@@ -5170,7 +5144,7 @@ def createVipService(serviceName, port):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get service info " + str(service[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -5195,7 +5169,7 @@ def createVipService(serviceName, port):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create service " + str(response.text),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         message = "Service created successfully"
@@ -5205,7 +5179,7 @@ def createVipService(serviceName, port):
     d = {
         "responseType": "ERROR",
         "msg": message,
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -5227,8 +5201,8 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
     if headers_[0] is None:
         d = {
             "responseType": "ERROR",
-            "msg": "Failed to get NSXT info " + str(headers_[1]),
-            "STATUS_CODE": 500
+            "msg": "Failed to nsxt info " + str(headers_[1]),
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     policy = getPolicy(headers_, policyName)
@@ -5237,7 +5211,7 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get policy " + str(policy[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -5247,7 +5221,7 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get Tier1 details " + str(tier_path[1]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             url = "https://" + headers_[2] + "/policy/api/v1/infra"
@@ -5321,7 +5295,7 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create policy " + str(response.text),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
     else:
@@ -5331,7 +5305,7 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get list of firewalls " + str(list_fw[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if not checkObjectIsPresentAndReturnPath(list_fw[0], ruleName)[0]:
@@ -5346,7 +5320,7 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create rule " + str(response.text),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         msg_text = ruleName + " rule created successfully"
@@ -5356,7 +5330,7 @@ def createFirewallRule(policyName, ruleName, rulePayLoad):
     d = {
         "responseType": "SUCCESS",
         "msg": msg_text,
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -5376,8 +5350,8 @@ def updateDefaultRule(policyName):
         if headers_[0] is None:
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to get NSXT info " + str(headers_[1]),
-                "STATUS_CODE": 500
+                "msg": "Failed to nsxt info " + str(headers_[1]),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         list_fw = getListOfFirewallRule(headers_, policyName)
@@ -5385,7 +5359,7 @@ def updateDefaultRule(policyName):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get list of firewalls " + str(list_fw[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         sequence = None
@@ -5396,8 +5370,8 @@ def updateDefaultRule(policyName):
         if sequence is None:
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to get sequence number of default rule ",
-                "STATUS_CODE": 500
+                "msg": "Failed to get sequnece number of default rule ",
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         tier_path = getTier1Details(headers_)
@@ -5405,7 +5379,7 @@ def updateDefaultRule(policyName):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get Tier1 details " + str(tier_path[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         url = "https://" + headers_[
@@ -5435,20 +5409,20 @@ def updateDefaultRule(policyName):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create policy " + str(response.text),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully updated default rule",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": "Failed to update default rule " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -6217,20 +6191,6 @@ def isEnvTkgs_ns(env):
         return False
 
 
-def isEnvTkgm(env):
-    try:
-        if env == Env.VSPHERE:
-            tkgs = str(request.get_json(force=True)['envSpec']['envType'])
-            if tkgs.lower() == EnvType.TKGM:
-                return True
-            else:
-                return False
-        else:
-            return False
-    except KeyError:
-        return False
-
-
 def createSubscribedLibrary(vcenter_ip, vcenter_username, password, env):
     try:
         os.putenv("GOVC_URL", "https://" + vcenter_ip + "/sdk")
@@ -6250,19 +6210,9 @@ def createSubscribedLibrary(vcenter_ip, vcenter_username, password, env):
         if str(output[0]).__contains__(ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY):
             current_app.logger.info(ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY + " is already present")
         else:
-            if check_tkgs_proxy_enabled():
-                # thumb_print = getSub_tumbprint()
-                # if thumb_print == 500:
-                #    return None, "Failed to obtain thumb print for content library repository"
-                thumb_print = ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY_THUMBPRINT
-                create_command = ["govc", "library.create", "-sub=" + url, "-ds=" + data_store, "-dc=" + data_center,
-                                  "-sub-autosync=true", "-sub-ondemand=true", "-thumbprint=" + thumb_print,
-                                  ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY]
-            else:
-                create_command = ["govc", "library.create", "-sub=" + url, "-ds=" + data_store, "-dc=" + data_center,
-                                  "-sub-autosync=true", "-sub-ondemand=true",
-                                  ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY]
-            current_app.logger.info(create_command)
+            create_command = ["govc", "library.create", "-sub=" + url, "-ds=" + data_store, "-dc=" + data_center,
+                              "-sub-autosync=true", "-sub-ondemand=true",
+                              ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY]
             output = runShellCommandAndReturnOutputAsList(create_command)
             if output[1] != 0:
                 return None, "Failed to create content library"
@@ -6270,69 +6220,6 @@ def createSubscribedLibrary(vcenter_ip, vcenter_username, password, env):
     except Exception as e:
         return None, "Failed"
     return "SUCCESS", "LIBRARY"
-
-
-def check_tkgs_proxy_enabled():
-    proxyEnabled = False
-    try:
-        isProxyEnabled = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec'][
-            'enableProxy']
-        if str(isProxyEnabled).lower() == "true":
-            proxyEnabled = True
-        else:
-            proxyEnabled = False
-
-        return proxyEnabled
-    except:
-        return False
-
-
-def getSub_tumbprint():
-    current_app.logger.info("Fetching thumbprint for subscribed content library repo")
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.settimeout(1)
-    wrappedSocket = ssl.wrap_socket(sock)
-    # url = "https://wp-content.vmware.com/v2/latest/lib.json"
-    url = "wp-content.vmware.com"
-    try:
-        wrappedSocket.connect(url, 443)
-    except Exception as e:
-        current_app.logger.error("Connection to " + url + " failed")
-        return 500
-
-    der_cert_bin = wrappedSocket.getpeercert(True)
-    pem_cert = ssl.DER_cert_to_PEM_cert(wrappedSocket.getpeercert(True))
-
-    # Thumbprint
-    thumb_md5 = hashlib.md5(der_cert_bin).hexdigest()
-    thumb_sha1 = hashlib.sha1(der_cert_bin).hexdigest()
-    thumb_sha256 = hashlib.sha256(der_cert_bin).hexdigest()
-    wrappedSocket.close()
-    if thumb_sha1:
-        thumb_sha1 = thumb_sha1.upper()
-        thumb_sha1 = ':'.join(thumb_sha1[i:i + 2] for i in range(0, len(thumb_sha1), 2))
-        current_app.logger.info("SHA1 for subscribed content library repo: " + thumb_sha1)
-        return thumb_sha1
-    else:
-        current_app.logger.error('Failed to obtain SHA1 for the repo')
-        return 500
-    # try:
-    #     os.system("openssl s_client -connect wp-content.vmware.com:443 2>/dev/null </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > test.pem")
-    #
-    #     tmubprint_command = ["openssl", "x509", "-fingerprint", "-in", "test.pem", "-noout"]
-    #
-    #     output = runShellCommandAndReturnOutputAsList(tmubprint_command)
-    #     if output[1] != 0:
-    #         return None, "Failed to create content library"
-    #
-    #     thumbprint = output[1].split("=")[1]
-    #     current_app.logger.info(thumbprint)
-    #
-    #     return thumbprint
-    # except Exception as e:
-    #     current_app.logger.error(str(e))
-    #     return 500
 
 
 def getNetworkUrl(ip, csrf2, name, cloudName, aviVersion):
@@ -6604,7 +6491,7 @@ def getStoragePolicies(vCenter, vCenter_user, VC_PASSWORD):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -6620,7 +6507,7 @@ def getStoragePolicies(vCenter, vCenter_user, VC_PASSWORD):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch storage policies",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -6631,7 +6518,7 @@ def getStoragePolicies(vCenter, vCenter_user, VC_PASSWORD):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching storage policies",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -6800,24 +6687,21 @@ def validatePem(pemcert):
 
 
 def configureKubectl(clusterIp):
-    try:
-        os.system("mkdir tempDir")
-        url = "https://" + clusterIp + "/wcp/plugin/linux-amd64/vsphere-plugin.zip"
-        response = requests.get(url, verify=False)
-        if response.status_code != 200:
-            current_app.logger.error("vsphere-plugin.zip download failed")
-            return None, response.text
-        with open(r'/tmp/vsphere-plugin.zip', 'wb') as f:
-            f.write(response.content)
-        create_command = ["unzip", "/tmp/vsphere-plugin.zip", "-d", "tempDir"]
-        output = runShellCommandAndReturnOutputAsList(create_command)
-        if output[1] != 0:
-            return None, "Failed to unzip vsphere-plugin.zip"
-        os.system("mv -f /opt/vmware/arcas/src/tempDir/bin/* /usr/local/bin/")
-        os.system("chmod +x /usr/local/bin/kubectl-vsphere")
-        return "SUCCESS", 200
-    except Exception as e:
-        return None, 500
+    os.system("mkdir tempDir")
+    url = "https://" + clusterIp + "/wcp/plugin/linux-amd64/vsphere-plugin.zip"
+    response = requests.get(url, verify=False)
+    if response.status_code != 200:
+        current_app.logger.error("vsphere-plugin.zip download failed")
+        return None, response.text
+    with open(r'/tmp/vsphere-plugin.zip', 'wb') as f:
+        f.write(response.content)
+    create_command = ["unzip", "/tmp/vsphere-plugin.zip", "-d", "tempDir"]
+    output = runShellCommandAndReturnOutputAsList(create_command)
+    if output[1] != 0:
+        return None, "Failed to unzip vsphere-plugin.zip"
+    os.system("mv -f /opt/vmware/arcas/src/tempDir/bin/* /usr/local/bin/")
+    os.system("chmod +x /usr/local/bin/kubectl-vsphere")
+    return "SUCCESS", 200
 
 
 def deleteConfigServer(cluster_endpoint):
@@ -6883,11 +6767,9 @@ def registerTMCTKGs(vCenter, vCenter_user, VC_PASSWORD):
             return None, message
         tmc_url = request.get_json(force=True)['envSpec']['saasEndpoints']['tmcDetails']['tmcInstanceURL']
         mgmt = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails']['tmcSupervisorClusterName']
-        status, message = register_management_cluster_tmc(tmc_url, mgmt, vCenter, vCenter_user, VC_PASSWORD)
+        status, message = register_management_cluster_tmc(tmc_url, mgmt)
         if status is None:
             return None, message
-        else:
-            return message, 200
     else:
         try:
             sess = requests.post(url + "rest/com/vmware/cis/session", auth=(vCenter_user, VC_PASSWORD), verify=False)
@@ -6895,7 +6777,7 @@ def registerTMCTKGs(vCenter, vCenter_user, VC_PASSWORD):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -6911,12 +6793,12 @@ def registerTMCTKGs(vCenter, vCenter_user, VC_PASSWORD):
             if id[1] != 200:
                 return None, id[0]
             clusterip_resp = requests.get(url + "api/vcenter/namespace-management/clusters/" + str(id[0]), verify=False,
-                                          headers=header)
+                                      headers=header)
             if clusterip_resp.status_code != 200:
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to fetch API server cluster endpoint - " + vCenter,
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -6939,12 +6821,12 @@ def registerTMCTKGs(vCenter, vCenter_user, VC_PASSWORD):
                 if not clusterGroup:
                     clusterGroup = "default"
                 os.putenv("TMC_API_TOKEN",
-                          request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails']['tmcRefreshToken'])
+                        request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails']['tmcRefreshToken'])
                 listOfCmdTmcLogin = ["tmc", "login", "--no-configure", "-name", "tkgvsphere-automation"]
                 runProcess(listOfCmdTmcLogin)
                 listOfCommandRegister = ["tmc", "managementcluster", "register", supervisor_cluster, "-c", clusterGroup,
-                                         "-p",
-                                         "TKGS"]
+                                        "-p",
+                                        "TKGS"]
                 generateYaml = runShellCommandAndReturnOutput(listOfCommandRegister)
                 if generateYaml[1] != 0:
                     return " Failed to register Supervisor Cluster " + str(generateYaml[0]), 500
@@ -6974,7 +6856,7 @@ def registerTMCTKGs(vCenter, vCenter_user, VC_PASSWORD):
     d = {
         "responseType": "ERROR",
         "msg": "Failed to Register Supervisor Cluster to TMC",
-        "STATUS_CODE": 500
+        "ERROR_CODE": 500
     }
     return jsonify(d), 500
 
@@ -7012,7 +6894,7 @@ def waitForTMCRegistration(super_cls):
         d = {
             "responseType": "ERROR",
             "msg": "TMC registration still did not complete " + str(count * 30),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     else:
@@ -7060,7 +6942,7 @@ def getClusterID(vCenter, vCenter_user, VC_PASSWORD, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -7078,7 +6960,7 @@ def getClusterID(vCenter, vCenter_user, VC_PASSWORD, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch datacenter ID for datacenter - " + vcenter_datacenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7091,7 +6973,7 @@ def getClusterID(vCenter, vCenter_user, VC_PASSWORD, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch cluster ID for cluster - " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         return clusterID_resp.json()[0]['cluster'], 200
@@ -7101,7 +6983,7 @@ def getClusterID(vCenter, vCenter_user, VC_PASSWORD, cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to fetch cluster ID for cluster - " + cluster,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -7134,13 +7016,13 @@ def downloadAviController(env):
             d = {
                 "responseType": "ERROR",
                 "msg": down[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Avi controller download successful",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -7210,7 +7092,7 @@ def checkOSFlavorForTMC(env, isShared, isWorkload):
         d = {
             "responseType": "ERROR",
             "msg": "Invalid env provided",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -7219,14 +7101,14 @@ def checkOSFlavorForTMC(env, isShared, isWorkload):
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully validated Kubernetes OVA images are photon",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
         d = {
             "responseType": "ERROR",
             "msg": "Only photon images are supported with TMC",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -7375,7 +7257,7 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             d = {
                 "responseType": "ERROR",
                 "msg": cluster_id[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7389,7 +7271,7 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             d = {
                 "responseType": "ERROR",
                 "msg": "WCP not enabled on given cluster - " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7404,7 +7286,7 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed while connecting to Supervisor Cluster",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         switch_context = ["kubectl", "config", "use-context", endpoint_ip]
@@ -7413,8 +7295,8 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             current_app.logger.error("Failed to use  context " + str(output[0]))
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to use context " + str(output[0]),
-                "STATUS_CODE": 500
+                "msg": "Failed to use  context " + str(output[0]),
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7427,7 +7309,7 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch cluster running status " + str(clusters_output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7442,7 +7324,7 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             d = {
                 "responseType": "ERROR",
                 "msg": "Unable to find cluster - " + workload_name,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7454,14 +7336,14 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch workload cluster running status " + str(clusters_output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
         d = {
             "responseType": "SUCCESS",
             "msg": "Workload cluster is in running status.",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
@@ -7469,7 +7351,7 @@ def isClusterRunning(vcenter_ip, vcenter_username, password, cluster, workload_n
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching the status of workload cluster",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -7526,7 +7408,7 @@ def fetchNamespaceInfo(env):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to find VC details",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         else:
@@ -7534,7 +7416,7 @@ def fetchNamespaceInfo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong environment provided to fetch namespace details",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7544,7 +7426,7 @@ def fetchNamespaceInfo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -7561,7 +7443,7 @@ def fetchNamespaceInfo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch details for namespace - " + name_space,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7571,7 +7453,7 @@ def fetchNamespaceInfo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "Selected namespace is not in running state - " + name_space,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7586,11 +7468,11 @@ def fetchNamespaceInfo(env):
                     policy_names.append(policy["name"])
 
         if not policy_names:
-            current_app.logger.error("Policy names list found empty for give namespace - " + name_space)
+            current_app.logger.error("Policy names list found empty for give namesapce - " + name_space)
             d = {
                 "responseType": "ERROR",
-                "msg": "Policy names list found empty for give namespace - " + name_space,
-                "STATUS_CODE": 500
+                "msg": "Policy names list found empty for give namesapce - " + name_space,
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7599,7 +7481,7 @@ def fetchNamespaceInfo(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "VM Classes list found empty for give namespace - " + name_space,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -7607,7 +7489,7 @@ def fetchNamespaceInfo(env):
         d = {
             "responseType": "SUCCESS",
             "msg": "Found namespace details successfully - " + name_space,
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "VM_CLASSES": vm_classes,
             "STORAGE_POLICIES": policy_names
         }
@@ -7616,8 +7498,8 @@ def fetchNamespaceInfo(env):
         current_app.logger.error(str(e))
         d = {
             "responseType": "ERROR",
-            "msg": "Exception occurred while fetching details for namespace - " + name_space,
-            "STATUS_CODE": 500
+            "msg": "Exception occurred while fteching details for namespace - " + name_space,
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -7648,7 +7530,7 @@ def deploy_fluent_bit(end_point, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create directory: " + Paths.CLUSTER_PATH + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         copy_template_command = ["cp", Paths.VSPHERE_FLUENT_BIT_YAML, Paths.CLUSTER_PATH + cluster]
@@ -7658,7 +7540,7 @@ def deploy_fluent_bit(end_point, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to copy template file to : " + Paths.CLUSTER_PATH + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         yamlFile = Paths.CLUSTER_PATH + cluster + "/fluent_bit_data_values.yaml"
@@ -7668,7 +7550,7 @@ def deploy_fluent_bit(end_point, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to update data values file",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         version = getVersionOfPackage(Tkg_Extention_names.FLUENT_BIT.lower() + ".tanzu.vmware.com")
@@ -7677,7 +7559,7 @@ def deploy_fluent_bit(end_point, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Capture the available Prometheus version",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         deploy_fluent_bit_command = ["tanzu", "package", "install", Tkg_Extention_names.FLUENT_BIT.lower(),
@@ -7712,7 +7594,7 @@ def deploy_fluent_bit(end_point, cluster):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Fluent-bit installation completed successfully",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         else:
@@ -7720,7 +7602,7 @@ def deploy_fluent_bit(end_point, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Fluent-bit installation failed",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     except Exception as e:
@@ -7728,7 +7610,7 @@ def deploy_fluent_bit(end_point, cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while deploying fluent-bit - " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -8068,38 +7950,6 @@ def checkDataProtectionEnabled(env, type):
         return False
 
 
-def checkDataProtectionEnabledVelero(env, type):
-    try:
-        if type == "shared":
-            if env == Env.VMC:
-                is_enabled = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['enableVelero']
-            elif env == Env.VCF:
-                is_enabled = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['enableVelero']
-            elif env == Env.VSPHERE:
-                is_enabled = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['enableVelero']
-            else:
-                is_enabled = "false"
-        elif type == "workload":
-            if isEnvTkgs_ns(env):
-                is_enabled = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["enableVelero"]
-            elif env == Env.VCF or env == Env.VSPHERE:
-                is_enabled = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['enableVelero']
-            elif env == Env.VMC:
-                is_enabled = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['enableVelero']
-        if is_enabled.lower() == "true":
-            return True
-        else:
-            return False
-    except Exception as e:
-        return False
-
-
 def isDataprotectionEnabled(tmc_url, headers, payload, cluster):
     url = VeleroAPI.ENABLE_DP.format(tmc_url=tmc_url, cluster=cluster)
     status = requests.request("GET", url, headers=headers, data=payload, verify=False)
@@ -8209,206 +8059,6 @@ def enable_data_protection(env, cluster, mgmt_cluster):
     except Exception as e:
         current_app.logger.error(str(e))
         return False, "Exception enabled while enabling data protection on cluster"
-
-
-def read_velero_param_dict(type, env):
-    try:
-        if type == "shared":
-            if env == Env.VMC:
-                username = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['username']
-                passwordBase64 = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['passwordBase64']
-                bucketName = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['bucketName']
-                backupRegion = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['backupRegion']
-                backupS3Url = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['backupS3Url']
-                backupPublicUrl = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['backupPublicUrl']
-            elif env == Env.VCF:
-                username = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['username']
-                passwordBase64 = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['passwordBase64']
-                bucketName = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['bucketName']
-                backupRegion = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['backupRegion']
-                backupS3Url = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['backupS3Url']
-                backupPublicUrl = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedClusterVeleroDataProtection']['backupPublicUrl']
-            elif env == Env.VSPHERE:
-                username = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['username']
-                passwordBase64 = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['passwordBase64']
-                bucketName = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['bucketName']
-                backupRegion = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['backupRegion']
-                backupS3Url = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['backupS3Url']
-                backupPublicUrl = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedClusterVeleroDataProtection']['backupPublicUrl']
-        else:
-            if isEnvTkgs_ns(env):
-                username = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["username"]
-                passwordBase64 = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["passwordBase64"]
-                bucketName = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["bucketName"]
-                backupRegion = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["backupRegion"]
-                backupS3Url = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["backupS3Url"]
-                backupPublicUrl = request.get_json(force=True)["tkgsComponentSpec"]["tkgsVsphereNamespaceSpec"][
-                    "tkgsVsphereWorkloadClusterSpec"]["tkgWorkloadClusterVeleroDataProtection"]["backupPublicUrl"]
-            elif env == Env.VCF or env == Env.VSPHERE:
-                username = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['username']
-                passwordBase64 = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['passwordBase64']
-                bucketName = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['bucketName']
-                backupRegion = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['backupRegion']
-                backupS3Url = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['backupS3Url']
-                backupPublicUrl = request.get_json(force=True)['tkgWorkloadComponents'][
-                    'tkgWorkloadClusterVeleroDataProtection']['backupPublicUrl']
-            elif env == Env.VMC:
-                username = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['username']
-                passwordBase64 = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['passwordBase64']
-                bucketName = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['bucketName']
-                backupRegion = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['backupRegion']
-                backupS3Url = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['backupS3Url']
-                backupPublicUrl = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterVeleroDataProtection']['backupPublicUrl']
-
-        base64_bytes_velero = passwordBase64.encode('ascii')
-        enc_bytes_velero = base64.b64decode(base64_bytes_velero)
-        velero_pass = enc_bytes_velero.decode('ascii').rstrip("\n")
-        velero_params = dict(
-            username=username,
-            password=velero_pass,
-            bucket=bucketName,
-            region=backupRegion,
-            s3Url=backupS3Url,
-            publicUrl=backupPublicUrl
-        )
-        return True, velero_params
-    except Exception as e:
-        current_app.logger.error("ERROR: Some error occurred while fetching velero parameters for " + type + " cluster")
-        return False, str(e)
-
-
-def create_velero_secret_file(username, password):
-    try:
-        data = f'''[default]
-        aws_access_key_id="{username}"
-        aws_secret_access_key="{password}"
-            '''
-        fileName = "credentials-velero"
-        os.system("rm -rf " + fileName)
-        with open(fileName, 'w') as f:
-            f.write(data)
-
-        return True, fileName
-    except Exception as e:
-        current_app.logger.error("ERROR: Some exception occurred while creating velero credentials file")
-        return False, str(e)
-
-
-def check_and_resolve_velero_pod_status(pod_status_output):
-    try:
-        pod_status_output.pop(0)
-        iter = 0
-        while iter < len(pod_status_output):
-            if not pod_status_output[iter].__contains__("Running"):
-                return False, "ImagePullBackOff"
-            iter = iter + 1
-        return True, "Running"
-    except Exception as e:
-        current_app.logger.error("ERROR: Failed to get velero and restic pod status")
-        return False, "Error"
-
-
-def enable_data_protection_velero(type, env):
-    try:
-        current_app.logger.info("Reading Velero parameter from the input JSON file")
-        velero_params = read_velero_param_dict(type, env)
-        if not velero_params[0]:
-            current_app.logger.error(velero_params[1])
-            return False, "Some Exception occurred while fetching velero parameters from input file"
-        velero_params = velero_params[1]
-        if checkAirGappedIsEnabled(env):
-            current_app.logger.info("The environment is airgapped")
-            repo = str(request.get_json(force=True)['envSpec']['customRepositorySpec']['tkgCustomImageRepository'])
-            repo = repo.replace("https://", "").replace("http://", "")
-            if repo[-1] != '/':
-                repo = repo + '/'
-            plugin_registry = repo + Extentions.VELERO_PLUGIN_IMAGE_LOCATION
-            image_registry = repo + Extentions.VELERO_CONTAINER_IMAGE
-        else:
-            repo = Repo.PUBLIC_REPO
-            plugin_registry = repo + Extentions.VELERO_PLUGIN_IMAGE_LOCATION
-            image_registry = repo + Extentions.VELERO_CONTAINER_IMAGE
-
-        current_app.logger.info("Creating Velero secret credential file")
-        secret_file = create_velero_secret_file(velero_params['username'], velero_params['password'])
-        if not secret_file[0]:
-            current_app.logger.error("ERROR: Unable to create a credential file for Velero")
-            current_app.logger.error(secret_file[1])
-            return False, secret_file[1]
-        secret_file = secret_file[1]
-        current_app.logger.info("Starting installation of Velero on " + type + " cluster")
-        command = ["velero", "install", "--provider", "aws", "--plugins", plugin_registry, "--image", image_registry,
-                   "--bucket", velero_params['bucket'], "--secret-file", secret_file, "--use-volume-snapshots=false",
-                   "--use-restic", "--backup-location-config",
-                   "region=" + velero_params['region'] + ", " + "s3ForcePathStyle=true, " +
-                   "s3Url=" + velero_params['s3Url'] + ", " + "publicUrl=" + velero_params['publicUrl']]
-        velero_output = runShellCommandAndReturnOutputAsList(command)
-        if velero_output[1] != 0:
-            current_app.logger.error("ERROR: Failed to install Velero on " + type + " cluster")
-            current_app.logger.error(str(velero_output[0]))
-            return False, "Failed to install Velero on " + type + " cluster"
-        current_app.logger.info("Successfully installed Velero on " + type + " cluster")
-        current_app.logger.info("Checking Velero pod status")
-        command = ["kubectl", "get", "pods", "-n", "velero"]
-        velero_pod_status_output = runShellCommandAndReturnOutputAsList(command)
-        velero_pod_status = check_and_resolve_velero_pod_status(velero_pod_status_output[0])
-        timer = 0
-        pod_status = False
-        while timer < 300:
-            if not velero_pod_status[0]:
-                current_app.logger.info("Velero pods are in " + velero_pod_status[1] + " status.")
-                current_app.logger.info("Waiting 30 secs for pods to be in RUNNING state")
-                time.sleep(30)
-                velero_pod_status_output = runShellCommandAndReturnOutputAsList(command)
-                velero_pod_status = check_and_resolve_velero_pod_status(velero_pod_status_output[0])
-                timer = timer + 30
-            else:
-                current_app.logger.info("All the pods are in RUNNING state after " + str(timer) + " seconds.")
-                pod_status = True
-                break
-        if not pod_status:
-            current_app.logger.error("ERROR: Velero pods are in " + velero_pod_status[1] + " status.")
-        os.system("rm -rf " + secret_file)
-        current_app.logger.info("Successfully removed file : " + secret_file)
-        return True, "Successfully installed Velero on " + type + " cluster"
-    except Exception as e:
-        current_app.logger.error("ERROR: Some exception occurred while installing Velero on " + type + " cluster")
-        current_app.logger.error(str(e))
-        return False, str(e)
 
 
 def fetchTMCHeaders(env):
@@ -8537,96 +8187,92 @@ def checkClusterNameDNSCompliant(cluster_name, env):
         current_app.logger.error("Failed to verify cluster name : " + cluster_name + " is DNS Compliant")
         return False, str(e)
 
-
-def check_tanzu_license(assignedLicense):
-    try:
-        for license in assignedLicense:
-            if license.assignedLicense.name.__contains__('Tanzu Standard activation for vSphere') or \
-                    license.assignedLicense.name.__contains__('Evaluation'):
-                properties = license.assignedLicense.properties
-                for prop in properties:
-                    if prop.key == 'expirationDate':
-                        expiration_date = str(prop.value)
-                        status = verify_expired(expiration_date)
-                        if status[1]:
-                            current_app.logger.error("ERROR: Tanzu Standard License expiration check failed")
-                            current_app.logger.error(status[0])
-                            return expiration_date, False
-                        return expiration_date, True
-                current_app.logger.info("Tanzu Standard Expiration is set to Never")
-                return "Never", True
-        current_app.logger.error("ERROR: No license found for: Tanzu Standard activation for vSphere")
-        return "No license found for: Tanzu Standard activation for vSphere", False
-    except Exception as e:
-        current_app.logger.error("ERROR: Exception occurred while validating Tanzu Standard License expiration check")
-        return str(e), False
-
-
-def check_nsxt_license(assignedLicense):
-    try:
-        for license in assignedLicense:
-            if license.assignedLicense.name.__contains__('NSX for vShield Endpoint'):
-                properties = license.assignedLicense.properties
-                for prop in properties:
-                    if prop.key == 'expirationDate':
-                        expiration_date = str(prop.value)
-                        status = verify_expired(expiration_date)
-                        if status[1]:
-                            current_app.logger.error("ERROR: NSX License expiration check failed")
-                            current_app.logger.error(status[0])
-                            return expiration_date, False
-                        return expiration_date, True
-                current_app.logger.info("NSX License is set to Never")
-                return "Never", True
-        current_app.logger.error("ERROR: No license found for: NSX for vShield Endpoint")
-        return "No license found for: NSX for vShield Endpoint", False
-    except Exception as e:
-        current_app.logger.error("ERROR: Exception occurred while validating NSX License expiration check")
-        return str(e), False
-
-
-def check_vsphere_license(assignedLicense):
-    try:
-        for license in assignedLicense:
-            if license.assignedLicense.name.__contains__('vCenter Server'):
-                properties = license.assignedLicense.properties
-                for prop in properties:
-                    if prop.key == 'expirationDate':
-                        expiration_date = str(prop.value)
-                        status = verify_expired(expiration_date)
-                        if status[1]:
-                            current_app.logger.error("ERROR: vCenter Server Standard License expiration check failed")
-                            current_app.logger.error(status[0])
-                            return expiration_date, False
-                        return expiration_date, True
-                current_app.logger.info("vCenter Server Standard License is set to Never")
-                return "Never", True
-        current_app.logger.error("ERROR: No license found for: vCenter Server Standard License")
-        return "No license found for: vCenter Server Standard License", False
-    except Exception as e:
-        current_app.logger.error(
-            "ERROR: Exception occurred while validating vCenter Server Standard License expiration check")
-        return str(e), False
-
-
-def verify_expired(expiration_date):
-    try:
-        date = expiration_date[0:10]
-        year = date.split('-')[0]
-        month = date.split('-')[1]
-        day = date.split('-')[2]
-
-        string_date = day + '/' + month + '/' + year
-        future = datetime.strptime(string_date, "%d/%m/%Y")
-        present = datetime.now()
-        if future.date() > present.date():
-            return "Verified expiration date is ahead of current date", False
-        else:
-            return "Expiration date is less than current date", True
-    except Exception as e:
-        current_app.logger.error("ERROR: Exception ocurred while verifying expiration date: " + expiration_date)
-        return str(e), True
-
+# def check_tanzu_license(assignedLicense):
+#     try:
+#         for license in assignedLicense:
+#             if license['assignedLicense']['name'].__contains__('Tanzu Standard activation for vSphere'):
+#                 for prop in license['assignedLicense']:
+#                     if prop['key'] == 'expirationDate':
+#                         expiration_date = prop['value']
+#                         status = verify_expired(expiration_date)
+#                         if status[1]:
+#                             current_app.logger.error("ERROR: Tanzu Standard License expiration check failed")
+#                             current_app.logger.error(status[0])
+#                             return expiration_date, False
+#                         return expiration_date, True
+#                     current_app.logger.info("Tanzu Standard Expiration is set to Never")
+#                     return "Never", True
+#                 current_app.logger.error("ERROR: No assigned license found for Tanzu Standard activation for vSphere")
+#                 return None, False
+#         current_app.logger.error("ERROR: No license found for: Tanzu Standard activation for vSphere")
+#         return "No license found for: Tanzu Standard activation for vSphere", False
+#     except Exception as e:
+#         current_app.logger.error("ERROR: Exception occurred while validating Tanzu Standard License expiration check")
+#         return str(e), False
+#
+# def check_nsxt_license(assignedLicense):
+#     try:
+#         for license in assignedLicense:
+#             if license['assignedLicense']['name'].__contains__('NSX for vShield Endpoint'):
+#                 for prop in license['assignedLicense']:
+#                     if prop['key'] == 'expirationDate':
+#                         expiration_date = prop['value']
+#                         status = verify_expired(expiration_date)
+#                         if status[1]:
+#                             current_app.logger.error("ERROR: NSX License expiration check failed")
+#                             current_app.logger.error(status[0])
+#                             return expiration_date, False
+#                         return expiration_date, True
+#                     current_app.logger.info("NSX License is set to Never")
+#                     return "Never", True
+#                 current_app.logger.error("ERROR: No assigned license found for NSX")
+#                 return None, False
+#         current_app.logger.error("ERROR: No license found for: NSX for vShield Endpoint")
+#         return "No license found for: NSX for vShield Endpoint", False
+#     except Exception as e:
+#         current_app.logger.error("ERROR: Exception occurred while validating NSX License expiration check")
+#         return str(e), False
+#
+# def check_vsphere_license(assignedLicense):
+#     try:
+#         for license in assignedLicense:
+#             if license['assignedLicense']['name'].__contains__('vCenter Server'):
+#                 for prop in license['assignedLicense']:
+#                     if prop['key'] == 'expirationDate':
+#                         expiration_date = prop['value']
+#                         status = verify_expired(expiration_date)
+#                         if status[1]:
+#                             current_app.logger.error("ERROR: vCenter Server Standard License expiration check failed")
+#                             current_app.logger.error(status[0])
+#                             return expiration_date, False
+#                         return expiration_date, True
+#                     current_app.logger.info("vCenter Server Standard License is set to Never")
+#                     return "Never", True
+#                 current_app.logger.error("ERROR: No assigned license found for vCenter Server Standard License")
+#                 return None, False
+#         current_app.logger.error("ERROR: No license found for: vCenter Server Standard License")
+#         return "No license found for: vCenter Server Standard License", False
+#     except Exception as e:
+#         current_app.logger.error("ERROR: Exception occurred while validating vCenter Server Standard License expiration check")
+#         return str(e), False
+#
+# def verify_expired(expiration_date):
+#     try:
+#         date = expiration_date.split('T')
+#         date = date[0]
+#         year = date.split('-')[0]
+#         month = date[1]
+#         day = date[2]
+#         string_date = day+'/'+month+'/'+year
+#         future = datetime.strptime(string_date, "%d/%m/%Y")
+#         present = datetime.now()
+#         if future.date() > present.date():
+#             return "Verified expiration date is ahead of current date", False
+#         else:
+#             return "Expiration date is less than current date", True
+#     except Exception as e:
+#         current_app.logger.error("ERROR: Exception occured while verifying expiration date: " + expiration_date)
+#         return  str(e), True
 
 # def ldap_operation(ldap_obj, operation_type, env, isbinded=False):
 #     try:
@@ -8900,8 +8546,6 @@ def getNetworkDetailsVip(ip, csrf2, vipNetworkUrl, startIp, endIp, prefixIp, net
         "x-avi-version": aviVersion,
         "x-csrftoken": csrf2[0]
     }
-    env = envCheck()
-    env = env[0]
     payload = {}
     response_csrf = requests.request("GET", url, headers=headers, data=payload, verify=False)
     details = {}
@@ -8911,8 +8555,7 @@ def getNetworkDetailsVip(ip, csrf2, vipNetworkUrl, startIp, endIp, prefixIp, net
     try:
         add = response_csrf.json()["configured_subnets"][0]["prefix"]["ip_addr"]["addr"]
         details["subnet_ip"] = add
-        if env == Env.VSPHERE:
-            details["vim_ref"] = response_csrf.json()["vimgrnw_ref"]
+        details["vim_ref"] = response_csrf.json()["vimgrnw_ref"]
         details["subnet_mask"] = response_csrf.json()["configured_subnets"][0]["prefix"]["mask"]
         return "AlreadyConfigured", 200, details
     except Exception as e:
@@ -8926,8 +8569,7 @@ def getNetworkDetailsVip(ip, csrf2, vipNetworkUrl, startIp, endIp, prefixIp, net
     return "SUCCESS", 200, details
 
 
-def create_virtual_service(ip, csrf2, avi_cloud_uuid, se_name, vip_network_url, se_count, tier_id, vrf_url_tier1,
-                           avi_version):
+def create_virtual_service(ip, csrf2, avi_cloud_uuid, se_name, vip_network_url, se_count, avi_version):
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -8936,8 +8578,6 @@ def create_virtual_service(ip, csrf2, avi_cloud_uuid, se_name, vip_network_url, 
         "x-avi-version": avi_version,
         "x-csrftoken": csrf2[0]
     }
-    env = envCheck()
-    env = env[0]
     body = {}
     url = AlbEndpoint.AVI_SERVICE_ENGINE.format(ip=ip, se_name=se_name, avi_cloud_uuid=avi_cloud_uuid)
     response_csrf = requests.request("GET", url, headers=headers, data=body, verify=False)
@@ -9009,17 +8649,10 @@ def create_virtual_service(ip, csrf2, avi_cloud_uuid, se_name, vip_network_url, 
             except:
                 current_app.logger.info("No virtual service vip created")
             if not isVipCreated:
-                if env == Env.VCF:
-                    body = AlbPayload.VIRTUAL_SERVICE_NSX_VIP.format(cloud_ref=cloud_ref,
-                                                                     virtual_service_name_vip=ServiceName.SIVT_SERVICE_VIP,
-                                                                     vrf_context_ref=vrf_url_tier1
-                                                                     , network_ref=vip_network_url, addr=ip_pre,
-                                                                     mask=mask, tier_1_gw_uuid=tier_id)
-                else:
-                    body = AlbPayload.VIRTUAL_SERVICE_VIP.format(cloud_ref=cloud_ref,
-                                                                 virtual_service_name_vip=ServiceName.SIVT_SERVICE_VIP,
-                                                                 vrf_context_ref=vrf_url
-                                                                 , network_ref=vip_network_url, addr=ip_pre, mask=mask)
+                body = AlbPayload.VIRTUAL_SERVICE_VIP.format(cloud_ref=cloud_ref,
+                                                             virtual_service_name_vip=ServiceName.SIVT_SERVICE_VIP,
+                                                             vrf_context_ref=vrf_url
+                                                             , network_ref=vip_network_url, addr=ip_pre, mask=mask)
                 response = requests.request("POST", virtual_service_vip_url, headers=headers, data=body, verify=False)
                 if response.status_code != 201:
                     return None, response.text
@@ -9039,15 +8672,9 @@ def create_virtual_service(ip, csrf2, avi_cloud_uuid, se_name, vip_network_url, 
             except:
                 current_app.logger.info("No virtual service created")
             if not isVsCreated:
-                if env == Env.VCF:
-                    body = AlbPayload.NSX_VIRTUAL_SERVICE.format(cloud_ref=cloud_ref,
-                                                                 se_group_ref=service_engine_group_url
-                                                                 , vsvip_ref=vip_url,
-                                                                 tier_1_vrf_context_url=vrf_url_tier1)
-                else:
-                    body = AlbPayload.VIRTUAL_SERVICE.format(cloud_ref=cloud_ref,
-                                                             se_group_ref=service_engine_group_url
-                                                             , vsvip_ref=vip_url)
+                body = AlbPayload.VIRTUAL_SERVICE.format(cloud_ref=cloud_ref,
+                                                         se_group_ref=service_engine_group_url
+                                                         , vsvip_ref=vip_url)
                 response = requests.request("POST", virtual_service_url, headers=headers, data=body, verify=False)
                 if response.status_code != 201:
                     return None, response.text
@@ -9168,20 +8795,10 @@ def create_tkgs_proxy_credential():
     isCredCreated = False
     try:
         refreshToken = request.get_json(force=True)['envSpec']['saasEndpoints']['tmcDetails']['tmcRefreshToken']
-
-        url = "https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize?refresh_token=" + refreshToken
-        headers = {}
-        payload = {}
-        response_login = requests.request("POST", url, headers=headers, data=payload, verify=False)
-        if response_login.status_code != 200:
-            return "login failed using provided TMC refresh token", 500
-
-        access_token = response_login.json()["access_token"]
-
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': access_token
+            'Authorization': refreshToken
         }
         tmc_url = request.get_json(force=True)['envSpec']['saasEndpoints']['tmcDetails']['tmcInstanceURL']
         httpProxy = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec'][
@@ -9189,40 +8806,19 @@ def create_tkgs_proxy_credential():
         httpsProxy = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec'][
             'httpsProxy']
         noProxy = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec']['noProxy']
-        current_app.logger.info("Getting current proxy credentials")
+        current_app.logger.info("Getting current proxy credntials")
         try:
-            url = tmc_url + "/v1alpha1/account/credentials/" + Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME
+            url = tmc_url + "/v1alpha1/account/credentials/" + TKGS_PROXY_CREDENTIAL_NAME
             body = {}
             response = requests.request("GET", url, headers=headers, data=body, verify=False)
-            if response.status_code == 200:
-                phase = response.json()["credential"]["status"]["phase"]
-                status = response.json()["credential"]["status"]["conditions"]["Ready"]["status"]
-                http_added = response.json()["credential"]["meta"]["annotations"]["httpProxy"]
-                https_added = response.json()["credential"]["meta"]["annotations"]["httpsProxy"]
-                if '@' in httpProxy:
-                    http_url_string = httpProxy.split("@")
-                    http_url = http_url_string[0].split("//")[0] + "//" + http_url_string[1]
-                else:
-                    http_url = httpProxy
-                if '@' in httpsProxy:
-                    https_url_string = httpsProxy.split("@")
-                    https_url = https_url_string[0].split("//")[0] + "//" + https_url_string[1]
-                else:
-                    https_url = httpsProxy
-                if phase == "CREATED" and status == "TRUE":
-                    if http_added == http_url and https_added == https_url:
-                        isCredCreated = True
-                    else:
-                        current_app.logger.error(
-                            "Credential with name " + Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME
-                            + " already exist with different proxy details. Please delete and retry")
-                        current_app.logger.error("Existing HTTP: " + http_added)
-                        current_app.logger.error("Existing HTTPS: " + https_added)
-                        return None, "Failed"
-                else:
-                    return None, "Credential state : " + phase + " " + status
+            if response.status_code != 200:
+                return None, response.text
+            phase = response.json()["credential"]["status"]["phase"]
+            status = response.json()["credential"]["status"]["conditions"]["Ready"]["status"]
+            if phase == "CREATED" and status == "TRUE":
+                isCredCreated = True
             else:
-                current_app.logger.info("Credentials doesn't exist, creating now...")
+                return None, "Credential state : " + phase + " " + status
         except Exception as e:
             current_app.logger.info(str(e))
         if not isCredCreated:
@@ -9235,9 +8831,6 @@ def create_tkgs_proxy_credential():
                     _enc_bytes = base64.b64encode(_base64_bytes)
                     http_user = _enc_bytes.decode('ascii')
 
-                    http_url_string = httpProxy.split("@")
-                    http_url = http_url_string[0].split("//")[0] + "//" + http_url_string[1]
-
                     http_password = http_proxy[2].split("@")[0]
                     http_password = requests.utils.unquote(http_password)
                     _base64_bytes = http_password.encode('ascii')
@@ -9246,7 +8839,6 @@ def create_tkgs_proxy_credential():
                 else:
                     http_user = ""
                     http_password = ""
-                    http_url = httpProxy
 
                 if '@' in httpsProxy:
                     https_proxy = httpsProxy.split(":")
@@ -9256,9 +8848,6 @@ def create_tkgs_proxy_credential():
                     _enc_bytes = base64.b64encode(_base64_bytes)
                     https_user = _enc_bytes.decode('ascii')
 
-                    https_url_string = httpsProxy.split("@")
-                    https_url = https_url_string[0].split("//")[0] + "//" + https_url_string[1]
-
                     https_password = https_proxy[2].split("@")[0]
                     https_password = requests.utils.unquote(https_password)
                     _base64_bytes = https_password.encode('ascii')
@@ -9267,7 +8856,6 @@ def create_tkgs_proxy_credential():
                 else:
                     https_user = ""
                     https_password = ""
-                    https_url = httpsProxy
 
             except Exception as e:
                 return None, "Proxy url must be in the format http://<Proxy_User>:<URI_EncodedProxy_Password>@<Proxy_IP>:<Proxy_Port> or http://<Proxy_IP>:<Proxy_Port>"
@@ -9275,12 +8863,12 @@ def create_tkgs_proxy_credential():
             body = {
                 "credential": {
                     "fullName": {
-                        "name": Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME
+                        "name": TKGS_PROXY_CREDENTIAL_NAME
                     },
                     "meta": {
                         "annotations": {
-                            "httpProxy": http_url,
-                            "httpsProxy": https_url,
+                            "httpProxy": httpProxy,
+                            "httpsProxy": httpsProxy,
                             "noProxyList": noProxy,
                             "proxyDescription": ""
                         }
@@ -9301,56 +8889,45 @@ def create_tkgs_proxy_credential():
                     }
                 }
             }
-            json_object = json.dumps(body, indent=4)
-            response = requests.request("POST", url, headers=headers, data=json_object, verify=False)
+            response = requests.request("POST", url, headers=headers, data=body, verify=False)
             if response.status_code != 200:
-                current_app.logger.error(response.text)
                 return None, response.text
         else:
-            current_app.logger.info(
-                "Credential " + Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME + " already created")
+            current_app.logger.info("Credential " + TKGS_PROXY_CREDENTIAL_NAME + "  already created")
         return "Success", "Credential created"
-    except Exception as e:
+    except  Exception as e:
         return None, str(e)
 
 
-def register_management_cluster_tmc(tmc_url, management_cluster, vCenter, vCenter_user, VC_PASSWORD):
+def register_management_cluster_tmc(tmc_url, management_cluster):
     try:
         isManagement_registered = False
         refreshToken = request.get_json(force=True)['envSpec']['saasEndpoints']['tmcDetails']['tmcRefreshToken']
-
-        url = "https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize?refresh_token=" + refreshToken
-        headers = {}
-        payload = {}
-        response_login = requests.request("POST", url, headers=headers, data=payload, verify=False)
-        if response_login.status_code != 200:
-            return "login failed using provided TMC refresh token", 500
-
-        access_token = response_login.json()["access_token"]
-
         headers = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'Authorization': access_token
+            'Authorization': refreshToken
         }
         body = {}
         try:
             management_cluster_url = tmc_url + "/v1alpha1/managementclusters/" + management_cluster
             response_m = requests.request("GET", management_cluster_url, headers=headers, data=body, verify=False)
-            if response_m.status_code == 200:
-                json_ = response_m.json()
-                phase = json_["managementCluster"]["status"]["phase"]
-                health = json_["managementCluster"]["status"]["health"]
-                message = json_["managementCluster"]["status"]["conditions"]["READY"]["message"]
-                if phase == "READY" and health == "HEALTHY" and message == "management cluster is connected to TMC and healthy":
-                    isManagement_registered = True
-                    return "SUCCESS", "Management cluster is already registered to tmc"
+            if response_m.status_code != 200:
+                return None, response_m.text
+            json_ = response_m.json()
+            phase = json_["managementCluster"]["status"]["phase"]
+            health = json_["managementCluster"]["status"]["health"]
+            message = json_["managementCluster"]["status"]["conditions"]["message"]
+            if phase == "READY" and health == "HEALTHY" and message == "management cluster is connected to TMC and healthy":
+                isManagement_registered = True
+                return "SUCCESS", "Management cluster is already registered to tmc"
             else:
                 isManagement_registered = False
+                current_app.logger.info("Management cluster state : " + phase + " " + health + " " + message)
         except Exception as e:
             isManagement_registered = False
         if not isManagement_registered:
-            proxy_name = Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME
+            proxy_name = "sivt-tkgs-proxy"
             clusterGroup = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails'][
                 'tmcSupervisorClusterGroupName']
             if not clusterGroup:
@@ -9388,20 +8965,16 @@ def register_management_cluster_tmc(tmc_url, management_cluster, vCenter, vCente
             reg_link = ""
             for d in t:
                 count = count + 1
-                if d.__contains__("tmc.cloud.vmware.com/bootstrap-token:"):
-                    bots_trap_token = d.split("tmc.cloud.vmware.com/bootstrap-token:")[1].strip()
-                    bots_trap_token = bots_trap_token.strip().replace("\"", "")
-                    # bots_trap_token = bots_trap_token.replace('"', '')
-                if d.__contains__("registrationLink:"):
-                    reg_link = d.split("registrationLink:")[1]
-                    reg_link = reg_link.strip().replace("\"", "")
-                    # reg_link = reg_link.replace('"', '')
+                if d == "tmc.cloud.vmware.com/bootstrap-token:":
+                    bots_trap_token = t[count]
+                if d == "registrationLink:":
+                    reg_link = t[count]
                 if bots_trap_token and reg_link:
                     break
             if not bots_trap_token and not reg_link:
                 return None, "Failed to get boots trap token and reg link from manifest"
             boots = {
-                "tmc.cloud.vmware.com/bootstrap-token": str(bots_trap_token)
+                "tmc.cloud.vmware.com/bootstrap-token": bots_trap_token
             }
             data = dict(
                 apiVersion='installers.tmc.cloud.vmware.com/v1alpha1',
@@ -9413,7 +8986,7 @@ def register_management_cluster_tmc(tmc_url, management_cluster, vCenter, vCente
                 ),
                 spec=dict(
                     operation="INSTALL",
-                    registrationLink=str(reg_link)
+                    registrationLink=reg_link
                 )
             )
             with open('tkgs-tmc-registration.yaml', 'w') as outfile:
@@ -9423,46 +8996,17 @@ def register_management_cluster_tmc(tmc_url, management_cluster, vCenter, vCente
             current_app.logger.info("Switching context to supervisor cluster")
             supervisor_cluster = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails'][
                 'tmcSupervisorClusterName']
-
-            ## get context and switch
-            url = "https://" + vCenter + "/"
-            sess = requests.post(url + "rest/com/vmware/cis/session", auth=(vCenter_user, VC_PASSWORD), verify=False)
-            if sess.status_code != 200:
-                return None, "Failed to fetch session ID for vCenter - " + vCenter
-            else:
-                session_id = sess.json()['value']
-
-            header = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "vmware-api-session-id": session_id
-            }
-            cluster_name = request.get_json(force=True)["envSpec"]["vcenterDetails"]["vcenterCluster"]
-            id = getClusterID(vCenter, vCenter_user, VC_PASSWORD, cluster_name)
-            if id[1] != 200:
-                return None, id[0]
-            clusterip_resp = requests.get(url + "api/vcenter/namespace-management/clusters/" + str(id[0]), verify=False,
-                                          headers=header)
-            if clusterip_resp.status_code != 200:
-                return None, "Failed to fetch API server cluster endpoint - " + vCenter
-
-            cluster_endpoint = clusterip_resp.json()["api_server_cluster_endpoint"]
-
-            supervisor_tmc = supervisorTMC(vCenter_user, VC_PASSWORD, cluster_endpoint)
-            if supervisor_tmc[1] != 200:
-                return None, supervisor_tmc[0]
-
-            # switch_context = ["kubectl", "config", "use-context", supervisor_cluster]
-            # output = runShellCommandAndReturnOutputAsList(switch_context)
-            # if output[1] != 0:
-            #    return None, " Failed to use  context " + str(output[0])
+            switch_context = ["kubectl", "config", "use-context", supervisor_cluster]
+            output = runShellCommandAndReturnOutputAsList(switch_context)
+            if output[1] != 0:
+                return None, " Failed to use  context " + str(output[0])
             current_app.logger.info("Applying registration yaml")
             command = ["kubectl", "create", "-f", "tkgs-tmc-registration.yaml"]
             create_output = runShellCommandAndReturnOutputAsList(command)
             if create_output[1] != 0:
                 return None, str(create_output[0])
             count = 0
-            while count < 60:
+            while (count < 60):
                 try:
                     management_cluster_url = tmc_url + "/v1alpha1/managementclusters/" + management_cluster
                     response_m = requests.request("GET", management_cluster_url, headers=headers, data=body,
@@ -9472,7 +9016,7 @@ def register_management_cluster_tmc(tmc_url, management_cluster, vCenter, vCente
                     json = response_m.json()
                     phase = json["managementCluster"]["status"]["phase"]
                     health = json["managementCluster"]["status"]["health"]
-                    message = json["managementCluster"]["status"]["conditions"]["READY"]["message"]
+                    message = json["managementCluster"]["status"]["conditions"]["message"]
                     if phase == "READY" and health == "HEALTHY" and message == "management cluster is connected to TMC and healthy":
                         return "SUCCESS", "Management cluster registered to tmc Successfully"
                     else:
@@ -9481,203 +9025,8 @@ def register_management_cluster_tmc(tmc_url, management_cluster, vCenter, vCente
                     pass
                 time.sleep(30)
                 count = count + 1
-                current_app.logger.info(
+                current_app.logger.inf(
                     "Waited for " + str(count * 30) + "s, retrying to check  management cluster status on tmc")
             return None, "Management cluster not registered on waiting " + str(count * 30) + "s"
-    except Exception as e:
-        return None, str(e)
-
-
-def ping_check_gateways(env):
-    try:
-        ip_addr = []
-        if env == Env.VSPHERE or env == Env.VCF:
-            if isEnvTkgs_wcp(env):
-                ip_addr.append(request.get_json(force=True)['tkgsComponentSpec']['aviMgmtNetwork']
-                               ['aviMgmtNetworkGatewayCidr'])
-                ip_addr.append(request.get_json(force=True)['tkgsComponentSpec']['tkgsVipNetwork']
-                               ['tkgsVipNetworkGatewayCidr'])
-                ip_addr.append(request.get_json(force=True)['tkgsComponentSpec']['tkgsMgmtNetworkSpec'][
-                                   'tkgsMgmtNetworkGatewayCidr'])
-                ip_addr.append(request.get_json(force=True)['tkgsComponentSpec']['tkgsPrimaryWorkloadNetwork'][
-                                   'tkgsPrimaryWorkloadNetworkGatewayCidr'])
-            elif isEnvTkgs_ns(env):
-                workload_nw_cidr = request.get_json(force=True)['tkgsComponentSpec']['tkgsWorkloadNetwork'][
-                    'tkgsWorkloadNetworkGatewayCidr']
-                if workload_nw_cidr:
-                    ip_addr.append(workload_nw_cidr)
-            else:
-                ip_addr.append(request.get_json(force=True)['tkgComponentSpec']['aviMgmtNetwork'][
-                                   'aviMgmtNetworkGatewayCidr'])
-                ip_addr.append(request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                                   'tkgMgmtGatewayCidr'])
-                if not env == Env.VCF:
-                    ip_addr.append(request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkGatewayCidr'])
-                    ip_addr.append(request.get_json(force=True)['tkgWorkloadDataNetwork'][
-                                       'tkgWorkloadDataNetworkGatewayCidr'])
-                ip_addr.append(request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadGatewayCidr'])
-                ip_addr.append(request.get_json(force=True)["tkgComponentSpec"]['tkgClusterVipNetwork'][
-                                   "tkgClusterVipNetworkGatewayCidr"])
-        elif env == Env.VMC:
-            ip_addr.append(request.get_json(force=True)['componentSpec']['aviMgmtNetworkSpec'][
-                               'aviMgmtGatewayCidr'])
-            ip_addr.append(request.get_json(force=True)['componentSpec']['tkgClusterVipNetwork'][
-                               'tkgClusterVipNetworkGatewayCidr'])
-            ip_addr.append(request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                               'tkgSharedGatewayCidr'])
-            ip_addr.append(request.get_json(force=True)['componentSpec']['aviMgmtNetworkSpec'][
-                               'aviMgmtGatewayCidr'])
-            ip_addr.append(request.get_json(force=True)['componentSpec']['tkgMgmtDataNetworkSpec'][
-                               'tkgMgmtDataGatewayCidr'])
-            ip_addr.append(request.get_json(force=True)['componentSpec']['tkgWorkloadDataNetworkSpec'][
-                               'tkgWorkloadDataGatewayCidr'])
-            ip_addr.append(request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                               'tkgWorkloadGatewayCidr'])
-
-        #remove duplicate CIDRs
-        if not ip_addr and isEnvTkgs_ns(env):
-            return True
-
-        ip_addr = [*set(ip_addr)]
-
-        for ip in ip_addr:
-            if ping_test("ping -c 1 " + ip.split("/")[0]) != 0:
-                current_app.logger.warn("Ping test failed for " + ip + " gateway. It is Recommended to fix this before proceeding with deployment")
-                time.sleep(30)
-            else:
-                current_app.logger.info("Ping test passed for gateway - " + ip)
-
-        return True
-    except Exception as e:
-        current_app.logger.warn("Exception occurred while performing ping test on gateway IPs")
-        current_app.logger.warn(str(e))
-        return True
-
-
-def ping_test(string_command):
-    try:
-        command = string_command.split(" ")
-        l, o = runShellCommandAndReturnOutputAsList(command)
-        s = l[4].replace(" ", "")
-        if s.__contains__(",100.0%packetloss,"):
-            return 1
-        elif s.__contains__(",0%packetloss,"):
-            return 0
-        else:
-            return 1
-    except:
-        return 1
-
-
-def check_files_type(files):
-    """
-    helper function to list pem files
-    """
-    list_of_pem_files = []
-    for fl in files:
-        if not os.path.splitext(fl)[1] == '.pem':
-            list_of_pem_files.append(files)
-    if len(list_of_pem_files) == 0:
-        return 'correct'
-    else:
-        return list_of_pem_files
-
-
-def add_ytt_overlays(cert_files):
-    lines_array = ''
-    ytt_path = os.path.join(Env.UPDATED_YTT_FILE_LOCATION, "photon-ubuntu-universal-overlay.yaml")
-    current_app.logger.info(f"Creating overlay file {ytt_path} for custom cert certificate")
-    with open("./common/photon-ubuntu-universal-overlay-sample.yaml", "r") as stream:
-        lines_array = stream.readlines()
-        for i, line in enumerate(lines_array):
-            if '#@ arr = ["tkg-custom-cert01.pem", "tkg-custom-cert02.pem"]' in line:
-                split_string = ' = ['
-                start = line.split(split_string)[0] + " = ["
-                end_string = ''
-                for f in cert_files[:-1]:
-                    f_name = os.path.split(f)[1]
-                    end_string += f'"{f_name}",'
-                last_file_name = os.path.split(cert_files[-1])[1]
-                end_string += f'"{last_file_name}"]\n'
-                print(start + end_string)
-                lines_array[i] = start + end_string
-    with open(ytt_path, "w") as stream:
-        stream.writelines(lines_array)
-
-
-def copy_pem_files_to_vsphere_ytt(cert_files):
-    for fl in cert_files:
-        if os.path.exists(fl):
-            current_app.logger.info(f"Copying cert files from {fl} to vsphere ytt location "
-                                    f"{Env.UPDATED_YTT_FILE_LOCATION}")
-            os.system(f"cp {fl} {Env.UPDATED_YTT_FILE_LOCATION}")
-        else:
-            current_app.logger.error(f"cert files {fl} not exists")
-            return False
-    return True
-
-
-def create_certs_in_ytt_config():
-    try:
-        cert_file_location = request.get_json(force=True)['tkgComponentSpec']["tkgMgmtComponents"]['tkgCustomCertsPath']
-        if len(cert_file_location) == 0:
-            # if file exist delete it.
-            ytt_path = os.path.join(Env.UPDATED_YTT_FILE_LOCATION, "photon-ubuntu-universal-overlay.yaml")
-            os.system(f"rm {ytt_path}")
-            current_app.logger.info(f"Custom Cert files location has not been provided for custom certificates")
-            return True, "Completed"
-        current_app.logger.info(f"Reading cert/pem files from {cert_file_location} for shared service cluster")
-        pem_files = check_files_type(cert_file_location)
-        if pem_files != 'correct':
-            current_app.logger.error(f"{pem_files} doesn't have .pem extension")
-            return False, f"{pem_files} doesn't have .pem extension"
-        else:
-            current_app.logger.info(f"{pem_files} pem/cert files found at {cert_file_location}")
-            if not copy_pem_files_to_vsphere_ytt(cert_file_location):
-                return False, f"Error in copying pem files"
-            add_ytt_overlays(cert_file_location)
-            return True, "Completed"
-
-    except Exception as e:
-        return None, str(e)
-
-
-def add_harbor_cert_in_overlays(cert_file):
-    lines_array = ''
-    ytt_path = os.path.join(Env.UPDATED_YTT_FILE_LOCATION, "photon-ubuntu-universal-overlay.yaml")
-    current_app.logger.info(f"Updating overlay file {ytt_path} for harbor cert certificate")
-    if not os.path.exists(ytt_path):
-        current_app.logger.info(f"{ytt_path} file with harbor certificate not exist, so creating it.")
-        add_ytt_overlays([cert_file])
-    else:
-        current_app.logger.info(f"Appending harbor certificate to the existing {ytt_path} file.")
-        with open(ytt_path, "r") as stream:
-            lines_array = stream.readlines()
-            for i, line in enumerate(lines_array):
-                if '#@ arr = ' in line:
-                    # add file to the end
-                    file_name = f', "{cert_file}"]'
-                    lines_array[i] = line.replace(']', file_name)
-        with open(ytt_path, "w") as stream:
-            stream.writelines(lines_array)
-
-
-def copy_harbor_cert_to_ytt_config():
-    try:
-        harbor_file = 'harbor.pem'
-        ytt_harbor_file = os.path.join(Env.UPDATED_YTT_FILE_LOCATION, harbor_file)
-        create_cert_command_list = ["kubectl", "get", "secret", "harbor-tls", "-n", "tanzu-system-registry",
-                                    "-o=go-template='{{index .data \"tls.crt\"}}'"]
-        output = runShellCommandAndReturnOutput(create_cert_command_list)
-        if output[1] != 0:
-            return None, "Unable to fetch cert files from harbor"
-        else:
-            current_app.logger.info(f"Going to write harbor certificate at {ytt_harbor_file}.")
-            harbor_pem = base64.b64decode(output[0]).decode("utf-8")
-            with open(ytt_harbor_file, "w") as fh:
-                fh.write(harbor_pem)
-        current_app.logger.info("Harbor certificate has been fetched successfully.")
-        add_harbor_cert_in_overlays(harbor_file)
-        return True, "Completed"
     except Exception as e:
         return None, str(e)

@@ -45,7 +45,6 @@ class VCF:
     DHCP_SERVER_NAME = "tkg-vsphere-nsxt-dhcp-server"
     ARCAS_GROUP = "arcas"
     ARCAS_BACKEND_GROUP = "arcas_backend"
-    NSXT_GROUP = "nsxt"
     ESXI_GROUP = "tkg-vsphere-nsxt-esxi"
     ESXI_FW = "tkg-vsphere-nsxt-tkg-esxi"
 
@@ -125,7 +124,6 @@ class FirewallRuleCgw:
     DISPLAY_NAME_VCF_TKG_and_AVI_to_vCenter = "tkg-vsphere-nsxt-tkg-avi-to-vcenter"
     DISPLAY_NAME_VCF_TKG_and_AVI_to_Internet = "tkg-vsphere-nsxt-tkg-external"
     DISPLAY_NAME_VCF_TKG_and_TKGtoAVIMgmt = "tkg-vsphere-nsxt-tkg-to-avimgmt"
-    DISPLAY_NAME_VCF_TKG_and_AVIMgmt = "tkg-vsphere-nsxt-avimgmt"
     DISPLAY_NAME_VCF_WORKLOAD_TKG_and_AVI_DNS = "tkg-vsphere-nsxt-tkgworkload01-tkginfra"
     DISPLAY_NAME_VCF_TKG_WORKLOAD_to_vCenter = "tkg-vsphere-nsxt-tkgworkload01-vcenter"
     DISPLAY_NAME_VCF_WORKLOAD_TKG_and_AVI_to_Internet = "tkg-vsphere-nsxt-workload-tkg-external"
@@ -184,7 +182,6 @@ class ControllerLocation:
     SUBSCRIBED_CONTENT_LIBRARY = "SubscribedAutomation-Lib"
     MARKETPLACE_CONTROLLER_FILENAME = "controller-20-1641297052015.ova"
     MARKETPLACE_AVI_SOLUTION_NAME = "nsx-advanced-load-balancer-1"
-    SUBSCRIBED_CONTENT_LIBRARY_THUMBPRINT = "B2:52:9E:4D:57:9F:EA:53:4D:A0:0B:7F:D4:7E:55:91:56:C0:64:BB"
 
 
 class MarketPlaceUrl:
@@ -204,7 +201,7 @@ class KubernetesOva:
     MARKETPLACE_PHOTON_KUBERNETES_FILE_NAME = "arcas-photon-kube"
     MARKETPLACE_PHOTON_GROUPNAME = "Photon-OVA"
     MARKETPLACE_UBUTNU_GROUPNAME = "Ubuntu-OVA"
-    KUBERNETES_OVA_LATEST_VERSION = "v1.23.8"
+    KUBERNETES_OVA_LATEST_VERSION = "v1.22.9"
 
 
 class RegexPattern:
@@ -248,15 +245,13 @@ class Extentions:
     FLUENT_BIT_LOCATION = TKG_EXTENTION_LOCATION + "extensions/logging/fluent-bit"
     PROMETHUS_LOCATION = TKG_EXTENTION_LOCATION + "extensions/monitoring/prometheus"
     GRAFANA_LOCATION = TKG_EXTENTION_LOCATION + "extensions/monitoring/grafana"
-    VELERO_PLUGIN_IMAGE_LOCATION = "velero/velero-plugin-for-aws:v1.4.1_vmware.1"
-    VELERO_CONTAINER_IMAGE = "velero/velero:v1.8.1_vmware.1"
     CERT_MANAGER_LOCATION = TKG_EXTENTION_LOCATION + "cert-manager"
     CERT_MANAGER_CA_INJECTOR = "cert-manager-cainjector:v0.16.1_vmware.1"
     CERT_MANAGER_CONTROLLER = "cert-manager-controller:v0.16.1_vmware.1"
     CERT_MANAGER_WEB_HOOK = "cert-manager-webhook:v0.16.1_vmware.1"
     APP_EXTENTION = "tkg-extensions-templates:v1.3.1_vmware.1"
     BOM_LOCATION = "/root/.tanzu/tkg/bom/tkg-bom-v1.3.1.yaml"
-    BOM_LOCATION_14 = "/root/.config/tanzu/tkg/bom/tkg-bom-v1.6.0.yaml"
+    BOM_LOCATION_14 = "/root/.config/tanzu/tkg/bom/tkg-bom-v1.5.4.yaml"
 
 
 class Repo:
@@ -270,8 +265,8 @@ class SAS:
 
 
 class Tkg_version:
-    TKG_VERSION = "1.6"
-    TAG = "v1.6.0"
+    TKG_VERSION = "1.5"
+    TAG = "v1.5.4"
 
 
 class Tkg_Extention_names:
@@ -294,13 +289,12 @@ class Tkgs_Extension_Details:
                              "v1.21.2+vmware.1-tkg.1.ee25d55", "v1.21.6+vmware.1-tkg.1.b3d708a",
                              "v1.21.6+vmware.1-tkg.1"]
     SUPPORTED_VERSIONS_U2 = ["v1.20.12+vmware.1-tkg.1.b9a42f3", "v1.19.7+vmware.1-tkg.1.fc82c41"]
-    TKGS_PROXY_CREDENTIAL_NAME = "sivt-credential"
 
 
 class TKG_Package_Details:
     REPO_NAME = "tanzu-standard"
     STANDARD_PACKAGE_URL = "projects.registry.vmware.com/tkg/packages/standard/repo"
-    REPOSITORY_URL = "projects.registry.vmware.com/tkg/packages/standard/repo:v1.6.0-update.1"
+    REPOSITORY_URL = "projects.registry.vmware.com/tkg/packages/standard/repo:v1.5.4-update.1"
     NAMESPACE = "tanzu-package-repo-global"
 
 
@@ -336,8 +330,6 @@ class Env:
     VSPHERE = "vsphere"
     VCF = "vcf"
     YTT_FILE_LOCATION = "/root/.tanzu/tkg/providers/infrastructure-vsphere/ytt"
-    # for tanzu>1.4 use below
-    UPDATED_YTT_FILE_LOCATION = "/root/.config/tanzu/tkg/providers/infrastructure-vsphere/ytt"
 
 
 class TmcUser:
@@ -436,7 +428,3 @@ class VeleroAPI:
     GET_CRED_INFO = "{tmc_url}v1alpha1/account/credentials/{credential}"
     GET_CLUSTER_INFO = "{tmc_url}v1alpha1/clusters/{cluster}"
     ENABLE_DP = "{tmc_url}v1alpha1/clusters/{cluster}/dataprotection"
-
-class NSXtCloud:
-    VCENTER_CREDENTIALS = "vcenter-creds"
-    NSXT_CREDENTIALS = "nsxt-creds"

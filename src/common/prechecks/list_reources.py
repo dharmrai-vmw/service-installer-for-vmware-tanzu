@@ -63,7 +63,7 @@ def getTer1Details():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -87,7 +87,7 @@ def getTer1Details():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get tier1 details, failed to fetch from api " + response.text,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), response.status_code
         list_of_display_name = []
@@ -98,7 +98,7 @@ def getTer1Details():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get tier1 details, list is empty ",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         list_zones = getListOfTransportZone(address, headers)
@@ -107,13 +107,13 @@ def getTer1Details():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get list of transport zones " + str(list_zones[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully got tier1 details ",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "TIER1_DETAILS": list_of_display_name,
             "OVERLAY_LIST": list_zones[0]
         }
@@ -123,7 +123,7 @@ def getTer1Details():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get details of nsxt tier 1 " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -136,7 +136,7 @@ def listResources():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -158,7 +158,7 @@ def listResources():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to capture VMC setup details ",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter = current_app.config['VC_IP']
@@ -170,7 +170,7 @@ def listResources():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to find VC details",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -185,7 +185,7 @@ def listResources():
             d = {
                 "responseType": "ERROR",
                 "msg": "No datacenters found " + str(e),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -241,7 +241,7 @@ def listResources():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed " + str(errors),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -266,7 +266,7 @@ def listResources():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to connect to vcenter. " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         current_app.logger.error("Failed to connect to vcenter. " + str(e))
         return jsonify(d), 500
@@ -274,7 +274,7 @@ def listResources():
     d = {
         "responseType": "SUCCESS",
         "msg": "Obtained the list of resources Successfully",
-        "STATUS_CODE": 200,
+        "ERROR_CODE": 200,
         "DATACENTERS": datacenter_names,
         "DATASTORES": datastores,
         "CLUSTERS": clusters,
@@ -332,7 +332,7 @@ def getthumbprint():
         d = {
             "responseType": "SUCCESS",
             "msg": "Obtained VC thumbprint Successfully",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "SHA1": thumb_sha1
         }
         current_app.logger.info("Obtained VC thumbprint Successfully")
@@ -341,7 +341,7 @@ def getthumbprint():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to obtain VC thumbprint",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         current_app.logger.info("Failed to obtain VC thumbprint")
         return jsonify(d), 500
@@ -418,7 +418,7 @@ def getFilesInContentLibrary():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -437,7 +437,7 @@ def getFilesInContentLibrary():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to capture VMC setup details ",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter = current_app.config['VC_IP']
@@ -449,7 +449,7 @@ def getFilesInContentLibrary():
         d = {
             "responseType": "ERROR",
             "msg": "vCenter details are missing",
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "CONTENT_LIBRARY_FILES": None
         }
         current_app.logger.error("vCenter details are missing")
@@ -459,7 +459,7 @@ def getFilesInContentLibrary():
         d = {
             "responseType": "ERROR",
             "msg": "Library name field is empty, please provide a content library name",
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "CONTENT_LIBRARY_FILES": None
         }
         current_app.logger.error("Library name field is empty, please provide a content library name")
@@ -522,7 +522,7 @@ def getFilesInContentLibrary():
             d = {
                 "responseType": "ERROR",
                 "msg": "No files available in given content library",
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "CONTENT_LIBRARY_FILES": None
             }
             current_app.logger.error("No files available in given content library")
@@ -531,7 +531,7 @@ def getFilesInContentLibrary():
         d = {
             "responseType": "SUCCESS",
             "msg": "Obtained list of files for given Content Library",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "CONTENT_LIBRARY_FILES": file_list
         }
         current_app.logger.info("Obtained list of files for given Content Library")
@@ -544,7 +544,7 @@ def getFilesInContentLibrary():
             d = {
                 "responseType": "ERROR",
                 "msg": response[0].json["msg"],
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "CONTENT_LIBRARY_FILES": None
             }
             return jsonify(d), 500
@@ -557,7 +557,7 @@ def getFilesInContentLibrary():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Obtained list of files for given Content Library",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "CONTENT_LIBRARY_FILES": file_list
             }
         return jsonify(d), 200
@@ -567,7 +567,7 @@ def getFilesInContentLibrary():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to obtain files for given content library: " + library_name,
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "CONTENT_LIBRARY_FILES": None
         }
         current_app.logger.error("Failed to obtain files for given content library: " + library_name)
@@ -622,7 +622,7 @@ def storagePolicies():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Obtained VC Storage Policies Successfully",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "STORAGE_POLICIES": policies_list
             }
             current_app.logger.info("Obtained VC Storage Policies Successfully")
@@ -631,7 +631,7 @@ def storagePolicies():
             d = {
                 "responseType": "ERROR",
                 "msg": "No Storage Policies found",
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "STORAGE_POLICIES": policies_list
             }
             current_app.logger.error("No Storage Policies found")
@@ -641,7 +641,7 @@ def storagePolicies():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching Storage Policies",
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "STORAGE_POLICIES": None
         }
         current_app.logger.error("Exception occurred while fetching Storage Policies")
@@ -663,7 +663,7 @@ def listvmclasses():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -680,7 +680,7 @@ def listvmclasses():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch VM classes",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -692,7 +692,7 @@ def listvmclasses():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Obtained list of VM Classes Successfully",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "VM_CLASSES": vm_classes
             }
             current_app.logger.info("Obtained list of VM Classes Successfully")
@@ -701,7 +701,7 @@ def listvmclasses():
             d = {
                 "responseType": "ERROR",
                 "msg": "No VM Class found",
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "VM_CLASSES": vm_classes
             }
             current_app.logger.error("No VM Class found")
@@ -711,7 +711,7 @@ def listvmclasses():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching VM Class list",
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "VM_CLASSES": None
         }
         current_app.logger.error("Exception occurred while fetching VM Class list")
@@ -728,7 +728,7 @@ def getKubernetesOvaVersions():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -774,7 +774,7 @@ def getKubernetesOvaVersions():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to Obtain product details from MarketPlace for solution " + solutionName,
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "KUBE_VERSION_LIST": None
         }
         return jsonify(d), 500
@@ -791,7 +791,7 @@ def getKubernetesOvaVersions():
         d = {
             "responseType": "ERROR",
             "msg": "Version list for Kubernetes OVA in MarketPlace is found empty",
-            "STATUS_CODE": 500,
+            "ERROR_CODE": 500,
             "KUBE_VERSION_LIST": None
         }
         return jsonify(d), 500
@@ -800,7 +800,7 @@ def getKubernetesOvaVersions():
         d = {
             "responseType": "SUCCESS",
             "msg": "Kubernetes OVA version list obtained successfully from MarketPlace",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "KUBE_VERSION_LIST": kubeVersionList
         }
         return jsonify(d), 200
@@ -823,7 +823,7 @@ def getWCPEnabledClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to find VC details",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -836,7 +836,7 @@ def getWCPEnabledClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "No clusters found under selected datacenter - " + datacenter_name,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -852,7 +852,7 @@ def getWCPEnabledClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "WCP enabled clusters not found",
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "WCP_CLUSTER_LIST": wcp_cluster
             }
             return jsonify(d), 500
@@ -862,7 +862,7 @@ def getWCPEnabledClusters():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "WCP enabled clusters found successfully",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "WCP_CLUSTER_LIST": wcp_cluster
             }
             return jsonify(d), 200
@@ -871,7 +871,7 @@ def getWCPEnabledClusters():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching WCP enabled clusters " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -893,7 +893,7 @@ def get_VCSession():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to capture VMC setup details ",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             vcenter_ip = current_app.config['VC_IP']
@@ -931,7 +931,7 @@ def getWorkloadNetworks():
             d = {
                 "responseType": "ERROR",
                 "msg": cluster_id[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -941,7 +941,7 @@ def getWorkloadNetworks():
             d = {
                 "responseType": "ERROR",
                 "msg": vc_session[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -959,7 +959,7 @@ def getWorkloadNetworks():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch workload networks for cluster - " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -971,7 +971,7 @@ def getWorkloadNetworks():
             d = {
                 "responseType": "ERROR",
                 "msg": "No workload network found on cluster - " + cluster,
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "WORKLOAD_NETWORKS": workload_networks
             }
             return jsonify(d), 500
@@ -981,7 +981,7 @@ def getWorkloadNetworks():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "workload networks found successfully on cluster - " + cluster,
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "WORKLOAD_NETWORKS": workload_networks
             }
             return jsonify(d), 200
@@ -990,7 +990,7 @@ def getWorkloadNetworks():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching workload networks for given cluster - " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1013,7 +1013,7 @@ def getClusterVersions():
             d = {
                 "responseType": "ERROR",
                 "msg": versions_output[0].json["msg"],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         for version in versions_output[0]:
@@ -1026,7 +1026,7 @@ def getClusterVersions():
             d = {
                 "responseType": "ERROR",
                 "msg": "Cluster versions list is empty",
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "CLUSTER_VERSIONS": cluster_versions
             }
             return jsonify(d), 500
@@ -1036,7 +1036,7 @@ def getClusterVersions():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Cluster versions obtained successfully",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "CLUSTER_VERSIONS": cluster_versions
             }
             return jsonify(d), 200
@@ -1045,7 +1045,7 @@ def getClusterVersions():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching cluster versions - " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1072,7 +1072,7 @@ def getAllNamespaces():
             d = {
                 "responseType": "ERROR",
                 "msg": cluster_id[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         cluster_id = cluster_id[0]
@@ -1090,7 +1090,7 @@ def getAllNamespaces():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get all namespaces for cluster - " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1104,7 +1104,7 @@ def getAllNamespaces():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Obtained namespaces for given cluster successfully",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "NAMESPACES_LIST": namespaces_list
             }
             return jsonify(d), 200
@@ -1113,7 +1113,7 @@ def getAllNamespaces():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "No namespaces found under cluster - " + cluster,
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "NAMESPACES_LIST": namespaces_list
             }
             return jsonify(d), 200
@@ -1122,7 +1122,7 @@ def getAllNamespaces():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching namespaces list for given cluster - " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1143,7 +1143,7 @@ def getSupervisorClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch list of supervisor cluster " + str(output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1161,7 +1161,7 @@ def getSupervisorClusters():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Obtained list of supervisor clusters successfully",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "NAMESPACES_LIST": cls_list
             }
             return jsonify(d), 200
@@ -1170,7 +1170,7 @@ def getSupervisorClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "No supervisor clusters found!",
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "NAMESPACES_LIST": cls_list
             }
             return jsonify(d), 500
@@ -1179,7 +1179,7 @@ def getSupervisorClusters():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching supervisor clusters list - " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1195,7 +1195,7 @@ def getSupervisorClusterHealth():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Selected supervisor cluster is registered to TMC",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         else:
@@ -1203,7 +1203,7 @@ def getSupervisorClusterHealth():
             d = {
                 "responseType": "ERROR",
                 "msg": "Selected supervisor cluster is not registered to TMC",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     except Exception as e:
@@ -1211,7 +1211,7 @@ def getSupervisorClusterHealth():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching supervisor clusters state on TMC - " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1226,7 +1226,7 @@ def getClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1245,7 +1245,7 @@ def getClusters():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to capture VMC setup details ",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             vCenter = current_app.config['VC_IP']
@@ -1258,7 +1258,7 @@ def getClusters():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to find VC details",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -1271,7 +1271,7 @@ def getClusters():
             d = {
                 "responseType": "ERROR",
                 "msg": "No clusters found under selected datacenter - " + datacenter_name,
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "CLUSTERS": clusters
             }
             return jsonify(d), 500
@@ -1286,7 +1286,7 @@ def getClusters():
                 d = {
                     "responseType": "ERROR",
                     "msg": "No vSphere Namespace compatible cluster found",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -1296,7 +1296,7 @@ def getClusters():
                 d = {
                     "responseType": "ERROR",
                     "msg": wcp_clusters[0].json["msg"],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 current_app.logger.error(wcp_clusters[0].json["msg"])
                 return jsonify(d), 500
@@ -1308,7 +1308,7 @@ def getClusters():
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully obtained clusters on given datacenter",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "CLUSTERS": clusters
         }
         return jsonify(d), 200
@@ -1318,7 +1318,7 @@ def getClusters():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching list of clusters ",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1333,7 +1333,7 @@ def getDatastores():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1352,7 +1352,7 @@ def getDatastores():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to capture VMC setup details ",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             vCenter = current_app.config['VC_IP']
@@ -1365,7 +1365,7 @@ def getDatastores():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to find VC details",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -1378,7 +1378,7 @@ def getDatastores():
             d = {
                 "responseType": "ERROR",
                 "msg": "No datastores found under selected datacenter - " + datacenter_name,
-                "STATUS_CODE": 500,
+                "ERROR_CODE": 500,
                 "DATASTORES": datastores
             }
             return jsonify(d), 500
@@ -1388,7 +1388,7 @@ def getDatastores():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Successfully obtained datastores on given datacenter",
-                "STATUS_CODE": 200,
+                "ERROR_CODE": 200,
                 "DATASTORES": datastores
             }
             return jsonify(d), 200
@@ -1397,7 +1397,7 @@ def getDatastores():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching list of datastores ",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1411,7 +1411,7 @@ def getNamespaceDetails():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1422,7 +1422,7 @@ def getNamespaceDetails():
             d = {
                 "responseType": "ERROR",
                 "msg": namespace_info[0].json["msg"],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1430,7 +1430,7 @@ def getNamespaceDetails():
         d = {
             "responseType": "SUCCESS",
             "msg": namespace_info[0].json["msg"],
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "VM_CLASSES": namespace_info[0].json["VM_CLASSES"],
             "STORAGE_POLICIES": namespace_info[0].json["STORAGE_POLICIES"]
         }
@@ -1440,7 +1440,7 @@ def getNamespaceDetails():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching details for namespace - ",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1454,7 +1454,7 @@ def fetchClusterGroups():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1465,7 +1465,7 @@ def fetchClusterGroups():
             d = {
                 "responseType": "ERROR",
                 "msg": response[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1476,7 +1476,7 @@ def fetchClusterGroups():
             d = {
                 "responseType": "ERROR",
                 "msg": "Cluster groups list for data protection is empty",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1485,7 +1485,7 @@ def fetchClusterGroups():
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully obtained cluster groups",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "CLUSTER_GROUPS": cluster_groups
         }
         return jsonify(d), 200
@@ -1494,7 +1494,7 @@ def fetchClusterGroups():
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1508,7 +1508,7 @@ def fetchCredentials():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1519,7 +1519,7 @@ def fetchCredentials():
             d = {
                 "responseType": "ERROR",
                 "msg": tmc_header[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1535,7 +1535,7 @@ def fetchCredentials():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch data protection credentials",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1547,7 +1547,7 @@ def fetchCredentials():
             d = {
                 "responseType": "ERROR",
                 "msg": "Data Protection credentials list is empty",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1556,7 +1556,7 @@ def fetchCredentials():
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully obtained data protection credentials",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "CREDENTIALS": credentials
         }
         return jsonify(d), 200
@@ -1565,7 +1565,7 @@ def fetchCredentials():
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1579,7 +1579,7 @@ def fetchTargetLocations():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1590,7 +1590,7 @@ def fetchTargetLocations():
             d = {
                 "responseType": "ERROR",
                 "msg": tmc_header[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1606,7 +1606,7 @@ def fetchTargetLocations():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch target locations for data protection",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1618,7 +1618,7 @@ def fetchTargetLocations():
             d = {
                 "responseType": "ERROR",
                 "msg": "Target locations list for Data Protection is empty",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1627,7 +1627,7 @@ def fetchTargetLocations():
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully obtained target locations",
-            "STATUS_CODE": 200,
+            "ERROR_CODE": 200,
             "TARGET_LOCATIONS": target_locations
         }
         return jsonify(d), 200
@@ -1636,7 +1636,7 @@ def fetchTargetLocations():
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1650,7 +1650,7 @@ def validateCredentials():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1662,7 +1662,7 @@ def validateCredentials():
             d = {
                 "responseType": "ERROR",
                 "msg": response[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             current_app.logger.error(response[1])
             return jsonify(d), 500
@@ -1671,7 +1671,7 @@ def validateCredentials():
             d = {
                 "responseType": "SUCCESS",
                 "msg": response[1],
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
 
@@ -1680,7 +1680,7 @@ def validateCredentials():
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1694,7 +1694,7 @@ def validateTargetLocations():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -1706,7 +1706,7 @@ def validateTargetLocations():
             d = {
                 "responseType": "ERROR",
                 "msg": response[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             current_app.logger.error(response[1])
             return jsonify(d), 500
@@ -1715,7 +1715,7 @@ def validateTargetLocations():
             d = {
                 "responseType": "SUCCESS",
                 "msg": response[1],
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
@@ -1723,6 +1723,6 @@ def validateTargetLocations():
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500

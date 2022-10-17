@@ -10,7 +10,7 @@ from jinja2 import Template
 import requests
 from tqdm import tqdm
 import base64
-from constants.constants import Constants, Paths, TKGCommands, ComponentPrefix, AkoType, Env, \
+from constants.constants import Constants, Paths, TKGCommands, ComponentPrefix, AkoType, \
     ControllerLocation, KubernetesOva, Cloud, VrfType, ResourcePoolAndFolderName, RegexPattern, CertName, Avi_Version,\
     Avi_Tkgs_Version, ServiceName
 from constants.alb_api_constants import AlbEndpoint, AlbPayload
@@ -35,7 +35,7 @@ import traceback
 from util.common_utils import downloadAndPushKubernetesOvaMarketPlace, \
     getCloudStatus, seperateNetmaskAndIp, getSECloudStatus, getSeNewBody, getVrfAndNextRoutId, \
     addStaticRoute, getVipNetworkIpNetMask, getClusterStatusOnTanzu, runSsh, checkenv, \
-    switchToManagementContext, getClusterID, getPolicyID, envCheck, \
+    switchToManagementContext, getClusterID, getPolicyID,\
     convertStringToCommaSeperated, cidr_to_netmask, getCountOfIpAdress, getLibraryId, getAviCertificate, \
     checkTmcEnabled, createSubscribedLibrary, checkAndWaitForAllTheServiceEngineIsUp, configureKubectl, registerTMCTKGs
 from util.replace_value import generateVsphereConfiguredSubnets, replaceValueSysConfig, \
@@ -45,7 +45,6 @@ from util.ShellHelper import runProcess, runShellCommandAndReturnOutputAsList, v
 from util.oidc_helper import checkEnableIdentityManagement, checkPinnipedInstalled, checkPinnipedServiceStatus, \
     checkPinnipedDexServiceStatus, createRbacUsers
 from util.tkg_util import TkgUtil
-from util.cleanup_util import CleanUpUtil
 
 
 # logger = LoggerHelper.get_logger(Path(__file__).stem)
@@ -65,20 +64,18 @@ class RaMgmtClusterWorkflow:
         else:
             raise Exception(f"Could not find supported TKG version: {self.tkg_version_dict}")
 
-        self.cleanup_obj = CleanUpUtil()
+        # self.tkg_type = ''.join([attr for attr in dir(self.run_config.desired_state.version) if "tkg" in attr])
+        # if "tkgs" in self.tkg_type:
+        #     self.jsonpath = os.path.join(self.run_config.root_dir, Paths.TKGS_WCP_MASTER_SPEC_PATH)
+        #     # self.ns_jsonpath = os.path.join(self.run_config.root_dir, Paths.TKGS_NS_MASTER_SPEC_PATH)
+        # elif "tkgm" in self.tkg_type:
+        #     self.jsonpath = os.path.join(self.run_config.root_dir, Paths.MASTER_SPEC_PATH)
+        # else:
+        #     raise Exception(f"Could not find supported TKG version: {self.tkg_type}")
 
         with open(self.jsonpath) as f:
             self.jsonspec = json.load(f)
-        self.env = envCheck(self.run_config)
-        if self.env[1] != 200:
-            logger.error("Wrong env provided " + self.env[0])
-            d = {
-                "responseType": "ERROR",
-                "msg": "Wrong env provided " + self.env[0],
-                "ERROR_CODE": 500
-            }
-            return json.dumps(d), 500
-        self.env = self.env[0]
+        self.env = "vsphere"
         check_env_output = checkenv(self.jsonspec)
         if check_env_output is None:
             msg = "Failed to connect to VC. Possible connection to VC is not available or " \
@@ -109,45 +106,33 @@ class RaMgmtClusterWorkflow:
 
     @log("Preparing to deploy Management cluster")
     def create_mgmt_cluster(self):
-        try:
-            config_cloud = self.configCloud()
-            if config_cloud[1] != 200:
+        config_cloud = self.configCloud()
+        if config_cloud[1] != 200:
+            d = {
+                "responseType": "ERROR",
+                "msg": "Failed to Config management cluster ",
+                "ERROR_CODE": 500
+            }
+            return json.dumps(d), 500
+        if not self.isEnvTkgs_wcp:
+            config_mgmt = self.configTkgMgmt()
+            if config_mgmt[1] != 200:
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to Config management cluster ",
                     "ERROR_CODE": 500
                 }
                 return json.dumps(d), 500
-            if not self.isEnvTkgs_wcp:
-                try:
-                    config_mgmt = self.configTkgMgmt()
-                    if config_mgmt[1] != 200:
-                        d = {
-                            "responseType": "ERROR",
-                            "msg": "Failed to Config management cluster ",
-                            "ERROR_CODE": 500
-                        }
-                        return json.dumps(d), 500
-                    d = {
-                        "responseType": "SUCCESS",
-                        "msg": "Management cluster configured Successfully",
-                        "ERROR_CODE": 200
-                    }
-                    logger.info("Management cluster configured Successfully")
-                    return json.dumps(d), 200
-                except Exception as e:
-                    logger.error(f"ERROR: Failed to create MGMT cluster: {e}")
-                    self.mgmt_cluster_name = self.jsonspec['tkgComponentSpec']['tkgMgmtComponents'][
-                        'tkgMgmtClusterName']
-                    self.cleanup_obj.delete_mgmt_cluster(self.mgmt_cluster_name)
-            else:
-                logger.info("Management cluster not required for TKGs")
-                return True
-        except Exception as e:
-            logger.error(f"ERROR: Failed to create MGMT cluster: {e}")
-            if not self.isEnvTkgs_wcp or not self.isEnvTkgs_ns:
-                self.mgmt_cluster_name = self.jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgMgmtClusterName']
-                self.cleanup_obj.delete_mgmt_cluster(self.mgmt_cluster_name)
+            d = {
+                "responseType": "SUCCESS",
+                "msg": "Management cluster configured Successfully",
+                "ERROR_CODE": 200
+            }
+            logger.info("Management cluster configured Successfully")
+            return json.dumps(d), 200
+        else:
+            logger.info("Management cluster not required for TKGs")
+            return True
 
     @log("Template yaml deployment of management cluster in progress...")
     def templateMgmtDeployYaml(self, ip, datacenter, data_store, cluster_name, wpName, wipIpNetmask,
@@ -1223,28 +1208,6 @@ class RaMgmtClusterWorkflow:
         replaceValueSysConfig("managementNetworkDetailsDhcp.json", "dhcp_enabled", "name", "true")
         return "SUCCESS", 200
 
-    @log("Enabling DHCP for Shared network")
-    def getNetworkDetailsSharedDhcp(self,ip, csrf2, managementNetworkUrl, aviVersion):
-        url = managementNetworkUrl
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Cookie": csrf2[1],
-            "referer": "https://" + ip + "/login",
-            "x-avi-version": aviVersion,
-            "x-csrftoken": csrf2[0]
-        }
-        payload = {}
-        response_csrf = requests.request("GET", url, headers=headers, data=payload, verify=False)
-        if response_csrf.status_code != 200:
-            return None, "Failed"
-        os.system("rm -rf sharedNetworkDetailsDhcp.json")
-        with open("./sharedNetworkDetailsDhcp.json", "w") as outfile:
-            json.dump(response_csrf.json(), outfile)
-        replaceValueSysConfig("sharedNetworkDetailsDhcp.json", "dhcp_enabled", "name", "true")
-        return "SUCCESS", 200
-
-
     @log("Enabling DHCP for management network")
     def enableDhcpForManagementNetwork(self, ip, csrf2, name, aviVersion):
         getNetwork = self.getNetworkUrl(ip, csrf2, name, aviVersion)
@@ -1278,42 +1241,6 @@ class RaMgmtClusterWorkflow:
         }
         response_csrf = requests.request("PUT", getNetwork[0], headers=headers, data=json_object_m,
                                          verify=False)
-        if response_csrf.status_code != 200:
-            return None, response_csrf.text
-        return "SUCCESS", 200
-
-
-    def enableDhcpForSharedNetwork(self,ip, csrf2, name, aviVersion):
-        getNetwork = self.getNetworkUrl(ip, csrf2, name, aviVersion)
-        if getNetwork[0] is None:
-            logger.error("Failed to network url " + name)
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to network url " + name,
-                "ERROR_CODE": 500
-            }
-            return json.dumps(d), 500
-        details = self.getNetworkDetailsSharedDhcp(ip, csrf2, getNetwork[0], aviVersion)
-        if details[0] is None:
-            logger.error("Failed to network details " + details[1])
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to get network details " + details[1],
-                "ERROR_CODE": 500
-            }
-            return json.dumps(d), 500
-        with open('./sharedNetworkDetailsDhcp.json', 'r') as openfile:
-            json_object = json.load(openfile)
-        json_object_m = json.dumps(json_object, indent=4)
-        headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "Cookie": csrf2[1],
-            "referer": "https://" + ip + "/login",
-            "x-avi-version": aviVersion,
-            "x-csrftoken": csrf2[0]
-        }
-        response_csrf = requests.request("PUT", getNetwork[0], headers=headers, data=json_object_m, verify=False)
         if response_csrf.status_code != 200:
             return None, response_csrf.text
         return "SUCCESS", 200
@@ -1553,12 +1480,16 @@ class RaMgmtClusterWorkflow:
         data_store = self.jsonspec['envSpec']['vcenterDetails']['vcenterDatastore']
         refToken = self.jsonspec['envSpec']['marketplaceSpec']['refreshToken']
         req = True
-        if refToken and (self.env == Env.VSPHERE or self.env == Env.VCF):
+        if refToken:
             if not (self.isEnvTkgs_wcp or self.isEnvTkgs_ns):
-                kubernetes_ova_os = self.jsonspec["tkgComponentSpec"]["tkgMgmtComponents"]["tkgMgmtBaseOs"]
+                kubernetes_ova_os = \
+                    self.jsonspec["tkgComponentSpec"]["tkgMgmtComponents"][
+                        "tkgMgmtBaseOs"]
                 kubernetes_ova_version = KubernetesOva.KUBERNETES_OVA_LATEST_VERSION
                 logger.info("Kubernetes OVA configs for management cluster")
-                down_status = downloadAndPushKubernetesOvaMarketPlace(self.jsonspec, kubernetes_ova_version, kubernetes_ova_os)
+                down_status = downloadAndPushKubernetesOvaMarketPlace(self.jsonspec,
+                                                                      kubernetes_ova_version,
+                                                                      kubernetes_ova_os)
                 if down_status[0] is None:
                     logger.error(down_status[1])
                     d = {
@@ -1924,19 +1855,6 @@ class RaMgmtClusterWorkflow:
                         "ERROR_CODE": 500
                     }
                     return json.dumps(d), 500
-                
-                if self.env == Env.VCF:
-                    shared_service_name = self.jsonspec['tkgComponentSpec']['tkgSharedserviceSpec'][
-                            'tkgSharedserviceNetworkName']
-                    dhcp = self.enableDhcpForSharedNetwork(ip, csrf2, shared_service_name, aviVersion)
-                    if dhcp[0] is None:
-                        logger.error("Failed to enable dhcp " + str(dhcp[1]))
-                        d = {
-                            "responseType": "ERROR",
-                            "msg": "Failed to enable dhcp " + str(dhcp[1]),
-                            "ERROR_CODE": 500
-                            }
-                        return json.dumps(d), 500
 
                 with open("./newCloudInfo.json", 'r') as file2:
                     new_cloud_json = json.load(file2)

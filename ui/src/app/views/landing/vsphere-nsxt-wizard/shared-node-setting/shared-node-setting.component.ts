@@ -78,7 +78,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
     private sharedClusterCidr;
     private sharedServiceCidr;
     private sharedControlPlaneEndpoint;
-    private tkgCustomCert;
     private enableHarbor;
     private harborFqdn;
     private harborPassword;
@@ -117,15 +116,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
     public validatedDataProtection = false;
     public credentialValidationError = "";
     public targetLocationValidationError = "";
-    // Offline VELERO
-    private enableVelero = false;
-    private veleroBucket;
-    private veleroUsername;
-    private veleroPassword;
-    private veleroRegion;
-    private veleroS3Url;
-    private veleroPublicUrl;
-
     constructor(private validationService: ValidationService,
                 private wizardFormService: VSphereWizardFormService,
                 public apiClient: APIClient,
@@ -193,8 +183,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
                 this.validationService.noWhitespaceOnEnds()
             ])
         );
-        this.formGroup.addControl('tkgCustomCert', new FormControl('', []));
-
         this.formGroup.addControl('clusterCidr',
             new FormControl('100.96.0.0/11', [Validators.required, this.validationService.isValidIpNetworkSegment(),
                 this.validationService.noWhitespaceOnEnds()]));
@@ -260,13 +248,7 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
             new FormControl('',
                 [this.validationService.noWhitespaceOnEnds()]
         ));
-        this.formGroup.addControl('enableVelero', new FormControl(false));
-        this.formGroup.addControl('veleroBucket', new FormControl('', []));
-        this.formGroup.addControl('veleroUsername', new FormControl('', []));
-        this.formGroup.addControl('veleroPassword', new FormControl('', []));
-        this.formGroup.addControl('veleroRegion', new FormControl('', []));
-        this.formGroup.addControl('veleroS3Url', new FormControl('', []));
-        this.formGroup.addControl('veleroPublicUrl', new FormControl('', []));
+
         SupervisedField.forEach(field => {
             this.formGroup.get(field).valueChanges.pipe(
                 debounceTime(500),
@@ -504,10 +486,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
                         this.apiClient.SharedNwValidated = false;
                     }
                 }
-                this.subscription = this.dataService.currentTkgCustomCert.subscribe(
-                    (certs) => this.tkgCustomCert = certs);
-                this.formGroup.get('tkgCustomCert').setValue(this.tkgCustomCert);
-
                 this.subscription = this.dataService.currentSharedEnableProxy.subscribe(
                     (sharedEnableProxy) => this.enableProxy = sharedEnableProxy);
                 this.formGroup.get('proxySettings').setValue(this.enableProxy);
@@ -556,31 +534,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
                     this.subscription = this.dataService.currentSharedViewUsers.subscribe(
                         (viewUsers) => this.viewUsers = viewUsers);
                     this.formGroup.get('viewUsers').setValue(this.viewUsers);
-                }
-                if(!this.apiClient.tmcEnabled) {
-                    this.subscription = this.dataService.currentSharedEnableVelero.subscribe(
-                        (enable) => this.enableVelero = enable);
-                    this.formGroup.get('enableVelero').setValue(this.enableVelero);
-                    if(this.enableVelero) {
-                        this.subscription = this.dataService.currentSharedVeleroUsername.subscribe(
-                            (username) => this.veleroUsername = username);
-                        this.formGroup.get('veleroUsername').setValue(this.veleroUsername);
-                        this.subscription = this.dataService.currentSharedVeleroPassword.subscribe(
-                            (password) => this.veleroPassword = password);
-                        this.formGroup.get('veleroPassword').setValue(this.veleroPassword);
-                        this.subscription = this.dataService.currentSharedVeleroBucketName.subscribe(
-                            (bucket) => this.veleroBucket = bucket);
-                        this.formGroup.get('veleroBucket').setValue(this.veleroBucket);
-                        this.subscription = this.dataService.currentSharedVeleroRegion.subscribe(
-                            (region) => this.veleroRegion = region);
-                        this.formGroup.get('veleroRegion').setValue(this.veleroRegion);
-                        this.subscription = this.dataService.currentSharedVeleroS3Url.subscribe(
-                            (s3Url) => this.veleroS3Url = s3Url);
-                        this.formGroup.get('veleroS3Url').setValue(this.veleroS3Url);
-                        this.subscription = this.dataService.currentSharedVeleroPublicUrl.subscribe(
-                            (publicUrl) => this.veleroPublicUrl = publicUrl);
-                        this.formGroup.get('veleroPublicUrl').setValue(this.veleroPublicUrl);
-                    }
                 }
                 this.subscription = this.dataService.currentHarborFqdn.subscribe(
                     (harborFqdn) => this.harborFqdn = harborFqdn);
@@ -789,7 +742,7 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
                 const block = new Netmask(gatewayIp);
                 if (block.contains(dhcpStart) && block.contains(dhcpEnd)) {
                     this.apiClient.SharedNwValidated = true;
-                    this.errorNotification = null;
+                    this.errorNotification = '';
                 } else if (!block.contains(dhcpStart) && !block.contains(dhcpEnd)) {
                     this.errorNotification = 'DHCP Start and End IP are out of the provided subnet';
                     this.apiClient.SharedNwValidated = false;
@@ -1192,43 +1145,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
         }
     }
 
-    toggleEnableVelero() {
-        const veleroFields = [
-            'veleroUsername',
-            'veleroPassword',
-            'veleroBucket',
-            'veleroRegion',
-            'veleroS3Url',
-            'veleroPublicUrl'
-        ];
-        if (!this.apiClient.tmcEnabled && this.formGroup.value['enableVelero']) {
-            this.resurrectField('veleroUsername', [
-                Validators.required
-            ], this.formGroup.value['veleroUsername']);
-            this.resurrectField('veleroPassword', [
-                Validators.required
-            ], this.formGroup.value['veleroPassword']);
-            this.resurrectField('veleroBucket', [
-                Validators.required
-            ], this.formGroup.value['veleroBucket']);
-
-            this.resurrectField('veleroRegion', [
-                Validators.required
-            ], this.formGroup.value['veleroRegion']);
-            this.resurrectField('veleroS3Url', [
-                Validators.required, this.validationService.isHttpOrHttps()
-            ], this.formGroup.value['veleroS3Url']);
-            this.resurrectField('veleroPublicUrl', [
-                Validators.required, this.validationService.isHttpOrHttps()
-            ], this.formGroup.value['veleroPublicUrl']);
-        } else {
-            this.apiClient.sharedDataProtectonEnabled = false;
-            veleroFields.forEach((field) => {
-                this.disarmField(field, true);
-            });
-        }
-    }
-
     getDisabled(): boolean {
         return !(this.formGroup.get('veleroCredential').valid && this.formGroup.get('veleroTargetLocation').valid);
     }
@@ -1272,14 +1188,6 @@ export class SharedNodeSettingComponent extends StepFormDirective implements OnI
             'httpsProxyPassword',
             'noProxy',
             'proxyCert',
-            'enableVelero',
-            'veleroUsername',
-            'veleroPassword',
-            'veleroBucket',
-            'veleroRegion',
-            'veleroS3Url',
-            'veleroPublicUrl',
-            'tkgCustomCert'
         ];
 
         if (this.formGroup.value['sharedServicesClusterSettings']) {

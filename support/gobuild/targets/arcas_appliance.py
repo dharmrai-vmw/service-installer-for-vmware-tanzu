@@ -25,7 +25,7 @@ class DemoVA(helpers.target.Target, helpers.make.MakeHelper):
         self.productname = 'Service installer for VMware Tanzu'
         self.longprodname = 'Builds arcas'
         self.shortname = 'arcas'
-        self.prodversion = '1.4-1.6.0'
+        self.prodversion = '1.3.1-1.5.4'
         self.sourcerootname = 'arcas'
         self.sourceroot = '%(buildroot)/' + self.sourcerootname
 
@@ -33,13 +33,7 @@ class DemoVA(helpers.target.Target, helpers.make.MakeHelper):
         return self.prodversion
 
     def GetClusterRequirements(self):
-        return {
-            'linux64-vm': {
-                'cpu': 8,  # treated as reserved.
-                'memory_gb': 8,
-                'disk_gb': 450,
-            },
-        }
+        return ['linux64-vm']
 
     def GetOptions(self):
         """
@@ -153,13 +147,6 @@ class PhotonVA(DemoVA):
             'buildtype': specs.arcas_appliance.STUDIOVA_BUILDTYPE,
             'url_enabled': specs.arcas_appliance.STUDIOVA_URL_ENABLED,
             'files': specs.arcas_appliance.STUDIOVA_FILES,
-        }
-        comps['cayman_harbor'] = {
-            'branch': specs.arcas_appliance.CAYMAN_HARBOR_BRANCH,
-            'change': specs.arcas_appliance.CAYMAN_HARBOR_CLN,
-            'buildtype': specs.arcas_appliance.CAYMAN_HARBOR_BUILDTYPE,
-            'url_enabled': specs.arcas_appliance.CAYMAN_HARBOR_URL_ENABLED,
-            'files': specs.arcas_appliance.CAYMAN_HARBOR_FILES,
         }
         comps['va_build'] = {
             'branch': specs.arcas_appliance.VA_BUILD_BRANCH,

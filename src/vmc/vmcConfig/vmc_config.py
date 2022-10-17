@@ -26,13 +26,13 @@ def config_vmc_env():
         response_body = {
             "responseType": "ERROR",
             "msg": str(ex),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(response_body), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Vmc configured Successfully",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     current_app.logger.info("Vmc configured Successfully ")
     return jsonify(d), 200

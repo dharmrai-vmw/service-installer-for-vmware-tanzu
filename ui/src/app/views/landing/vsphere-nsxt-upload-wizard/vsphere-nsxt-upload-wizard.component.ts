@@ -1474,12 +1474,6 @@ export class VsphereNsxtUploadWizardComponent implements OnInit {
                         this.nsxtDataService.changeSharedBaseImageVersion(
                             input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedserviceKubeVersion']);
                     }
-                    if(input['tkgComponentSpec']['tkgSharedserviceSpec'].hasOwnProperty('tkgCustomCertsPath')) {
-                        if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgCustomCertsPath'] !== "" && 
-                        input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgCustomCertsPath'] !== null) {
-                            this.nsxtDataService.changeTkgCustomCert(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgCustomCertsPath']);
-                        }
-                    }
                     if (this.apiClient.enableIdentityManagement) {
                         if (input['tkgComponentSpec'].hasOwnProperty('tkgSharedserviceRbacUserRoleSpec')) {
                             if (input['tkgComponentSpec']['tkgSharedserviceRbacUserRoleSpec'].hasOwnProperty('clusterAdminUsers')) {
@@ -1544,45 +1538,6 @@ export class VsphereNsxtUploadWizardComponent implements OnInit {
                     } else {
                         this.apiClient.sharedDataProtectonEnabled = false;
                         this.nsxtDataService.changeSharedEnableDataProtection(false);
-                    }
-                    if(!this.apiClient.tmcEnabled) {
-                        if(input['tkgComponentSpec']['tkgSharedserviceSpec'].hasOwnProperty('tkgSharedClusterVeleroDataProtection')) {
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('enableVelero')) {
-                                if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['enableVelero'] === 'true') {
-                                    this.nsxtDataService.changeSharedEnableVelero(true);
-                                }
-                            } else {
-                                this.nsxtDataService.changeSharedEnableVelero(false);
-                            }
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('username')) {
-                                this.nsxtDataService.changeSharedVeleroUsername(
-                                    input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['username']);
-                            }
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('passwordBase64')) {
-                                this.nsxtDataService.changeSharedVeleroPassword(
-                                    atob(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['passwordBase64']));
-                            }
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('bucketName')) {
-                                this.nsxtDataService.changeSharedVeleroBucketName(
-                                    input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['bucketName']);
-                            }
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('backupRegion')) {
-                                this.nsxtDataService.changeSharedVeleroRegion(
-                                    input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['backupRegion']);
-                            }
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('backupS3Url')) {
-                                this.nsxtDataService.changeSharedVeleroS3Url(
-                                    input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['backupS3Url']);
-                            }
-                            if(input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('backupPublicUrl')) {
-                                this.nsxtDataService.changeSharedVeleroPublicUrl(
-                                    input['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedClusterVeleroDataProtection']['backupPublicUrl']);
-                            }
-                        } else {
-                            this.nsxtDataService.changeSharedEnableVelero(false);
-                        }
-                    } else {
-                        this.nsxtDataService.changeSharedEnableVelero(false);
                     }
                 }
             }
@@ -1826,45 +1781,6 @@ export class VsphereNsxtUploadWizardComponent implements OnInit {
                 } else {
                     this.nsxtDataService.changeWrkEnableDataProtection(false);
                     this.apiClient.wrkDataProtectionEnabled = false;
-                }
-                if(!this.apiClient.tmcEnabled) {
-                    if(input['tkgWorkloadComponents'].hasOwnProperty('tkgWorkloadClusterVeleroDataProtection')) {
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('enableVelero')) {
-                            if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['enableVelero'] === 'true') {
-                                this.nsxtDataService.changeWrkEnableVelero(true);
-                            }
-                        } else {
-                            this.nsxtDataService.changeWrkEnableVelero(false);
-                        }
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('username')) {
-                            this.nsxtDataService.changeWrkVeleroUsername(
-                                input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['username']);
-                        }
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('passwordBase64')) {
-                            this.nsxtDataService.changeWrkVeleroPassword(
-                                atob(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['passwordBase64']));
-                        }
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('bucketName')) {
-                            this.nsxtDataService.changeWrkVeleroBucketName(
-                                input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['bucketName']);
-                        }
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('backupRegion')) {
-                            this.nsxtDataService.changeWrkVeleroRegion(
-                                input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['backupRegion']);
-                        }
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('backupS3Url')) {
-                            this.nsxtDataService.changeWrkVeleroS3Url(
-                                input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['backupS3Url']);
-                        }
-                        if(input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('backupPublicUrl')) {
-                            this.nsxtDataService.changeWrkVeleroPublicUrl(
-                                input['tkgWorkloadComponents']['tkgWorkloadClusterVeleroDataProtection']['backupPublicUrl']);
-                        }
-                    } else {
-                        this.nsxtDataService.changeWrkEnableVelero(false);
-                    }
-                } else {
-                    this.nsxtDataService.changeWrkEnableVelero(false);
                 }
             }
             if (input.hasOwnProperty('harborSpec')) {

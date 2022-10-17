@@ -56,7 +56,7 @@ def configManagementCluster():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to Config management cluster " + str(config_cloud[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     config_mgmt = configTkgMgmt()
@@ -65,13 +65,13 @@ def configManagementCluster():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to Config management cluster " + str(config_mgmt[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Management cluster configured Successfully",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     current_app.logger.info("Management cluster configured Successfully")
     return jsonify(d), 200
@@ -85,7 +85,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     password = current_app.config['VC_PASSWORD']
@@ -100,7 +100,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -115,7 +115,7 @@ def configCloud():
             d = {
                 "responseType": "ERROR",
                 "msg": down_status[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -132,7 +132,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create folder " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if isAviHaEnabled(env):
@@ -144,7 +144,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -153,7 +153,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -163,7 +163,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     aviVersion = get_avi_version(env)
@@ -173,7 +173,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get cloud status " + str(get_cloud[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -187,7 +187,7 @@ def configCloud():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create cloud " + str(cloud[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         cloud_url = cloud[0]
@@ -200,7 +200,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get se cloud status " + str(get_se_cloud[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -214,7 +214,7 @@ def configCloud():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create  se cloud " + str(cloud_se[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         se_cloud_url = cloud_se[0]
@@ -227,7 +227,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get vip network " + str(get_wip[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -241,7 +241,7 @@ def configCloud():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create  vip network " + str(vip_net[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         wip_url = vip_net[0]
@@ -250,14 +250,14 @@ def configCloud():
     else:
         wip_url = get_wip[0]
         wip_cluster_url = ""
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         get__cluster_wip = getVipNetwork(ip, csrf2, Cloud.WIP_CLUSTER_NETWORK_NAME, aviVersion)
         if get_wip[0] is None:
             current_app.logger.error("Failed to get cluster vip network " + str(get_wip[1]))
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get cluster vip network " + str(get_wip[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         isGen = False
@@ -271,7 +271,7 @@ def configCloud():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create cluster vip network " + str(vip_net[1]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             wip_cluster_url = vip_net[0]
@@ -284,7 +284,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ipam " + str(get_ipam[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -298,7 +298,7 @@ def configCloud():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create  ipam " + str(ipam[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         ipam_url = ipam[0]
@@ -311,7 +311,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get new cloud details " + str(new_cloud_status[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     update = updateNewCloudSeGroup(ip, csrf2, cloud_url, aviVersion)
@@ -320,16 +320,16 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to update cloud " + str(update[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
-    se_ova = generateSeOva(ip, csrf2, aviVersion, Cloud.CLOUD_NAME)
+    se_ova = generateSeOva(ip, csrf2, aviVersion)
     if se_ova[0] is None:
         current_app.logger.error("Failed to generate se ova " + str(se_ova[1]))
         d = {
             "responseType": "ERROR",
             "msg": "Failed to generate se ova " + str(se_ova[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     vm_state = checkVmPresent(vcenter_ip, vcenter_username, password,
@@ -339,27 +339,27 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Avi controller not found ",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     avi_uuid = vm_state.config.uuid
-    se_download_ova = downloadSeOva(ip, csrf2, avi_uuid, aviVersion, Cloud.CLOUD_NAME)
+    se_download_ova = downloadSeOva(ip, csrf2, avi_uuid, aviVersion)
     if se_download_ova[0] is None:
         current_app.logger.error("Failed to download se ova " + str(se_download_ova[1]))
         d = {
             "responseType": "ERROR",
             "msg": "Failed to download se ova " + str(se_download_ova[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Getting token")
-    token = generateToken(ip, csrf2, aviVersion, Cloud.CLOUD_NAME)
+    token = generateToken(ip, csrf2, aviVersion)
     if token[0] is None:
         current_app.logger.error("Failed to get token " + str(token[1]))
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  token " + str(token[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Get cluster uuid")
@@ -369,7 +369,7 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get cluster uuid " + str(uuid[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     replaceNetworkValues(ip, token[0], uuid[0], "./vmc/managementConfig/importSeOva-vc.json")
@@ -392,7 +392,7 @@ def configCloud():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to  push se ova to vcenter " + str(push[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -406,14 +406,14 @@ def configCloud():
         d = {
             "responseType": "ERROR",
             "msg": "Controller deployment failed " + str(dep[0]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Configured management cluster successfully")
     d = {
         "responseType": "SUCCESS",
         "msg": "Configured management cluster successfully",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -426,13 +426,13 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
     vm_state_se = checkVmPresent(vcenter_ip, vcenter_username, password, controllerName1)
     if vm_state_se is None:
         current_app.logger.info("Getting token")
-        token = generateToken(ip, csrf2, aviVersion, Cloud.CLOUD_NAME)
+        token = generateToken(ip, csrf2, aviVersion)
         if token[0] is None:
             current_app.logger.error("Failed to get token " + str(token[1]))
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to  token " + str(token[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Get cluster uuid")
@@ -442,7 +442,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get cluster uuid " + str(uuid[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if type == Type.WORKLOAD:
@@ -457,7 +457,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to  deploy se ova to vcenter " + str(deploy_se[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         isDeployed = True
@@ -481,20 +481,20 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Controller 1 is not up ",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Checking controller 2")
     vm_state_se2 = checkVmPresent(vcenter_ip, vcenter_username, password, controllerName2)
     if vm_state_se2 is None:
         current_app.logger.info("Getting token")
-        token = generateToken(ip, csrf2, aviVersion,Cloud.CLOUD_NAME)
+        token = generateToken(ip, csrf2, aviVersion)
         if token[0] is None:
             current_app.logger.error("Failed to get token " + str(token[0]))
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to  token " + str(token[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Get cluster uuid")
@@ -504,7 +504,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get cluster uuid " + str(uuid[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         replaceNetworkValues(ip, token[0], uuid[0], seJson)
@@ -516,7 +516,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to  deploy 2nd se ova to vcenter " + str(deploy_se2[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         isDeployed = True
@@ -540,7 +540,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Controller 2 is not up ",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     urlFromServiceEngine1 = listAllServiceEngine(ip, csrf2, seCount, seIp1, aviVersion)
@@ -549,7 +549,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get service engine details " + str(urlFromServiceEngine1[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     urlFromServiceEngine2 = listAllServiceEngine(ip, csrf2, seCount, seIp2, aviVersion)
@@ -558,7 +558,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get service engine details " + str(urlFromServiceEngine2[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     details1 = getDetailsOfServiceEngine(ip, csrf2, urlFromServiceEngine1[0], detailsJson1, aviVersion)
@@ -567,7 +567,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get details of engine 1" + str(details1[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     details2 = getDetailsOfServiceEngine(ip, csrf2, urlFromServiceEngine2[0], detailsJson2, aviVersion)
@@ -576,7 +576,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get details of engine 2 " + str(details2[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -590,7 +590,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  change set interfaces engine 1" + str(se_engines[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     se_engines2 = changeSeGroupAndSetInterfaces(ip, csrf2, urlFromServiceEngine2[0], se_cloud_url,
@@ -603,7 +603,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  change set interfaces engine2 " + str(se_engines2[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     listOfServiceEngine = [urlFromServiceEngine1[0], urlFromServiceEngine2[0]]
@@ -615,7 +615,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get connected status of engine " + str(s[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Service engine " + i + " is connected")
@@ -627,7 +627,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": e,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     with open("./newCloudInfo.json", 'r') as file2:
@@ -657,7 +657,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Vrf not found " + str(vrf[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if vrf[1] != "Already_Configured":
@@ -668,7 +668,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
                 d = {
                     "responseType": "ERROR",
                     "msg": "Vrf not found " + str(ad[1]),
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Routing is configured.")
@@ -678,7 +678,7 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
         d = {
             "responseType": "ERROR",
             "msg": "Vrf not found " + str(vrf[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if vrf[1] != "Already_Configured":
@@ -689,14 +689,14 @@ def controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcent
             d = {
                 "responseType": "ERROR",
                 "msg": "Vrf not found " + str(ad[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Routing is configured.")
     d = {
         "responseType": "SUCCESS",
         "msg": "Deployment Successful",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -709,7 +709,7 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -718,7 +718,7 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     json_dict = request.get_json(force=True)
@@ -740,7 +740,7 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(create[0].json['msg']),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     if isAviHaEnabled(env):
@@ -752,7 +752,7 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     csrf2 = obtain_second_csrf(ip, env)
@@ -761,7 +761,7 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     get_wip = getVipNetworkIpNetMask(ip, csrf2, Cloud.WIP_NETWORK_NAME, aviVersion)
@@ -770,10 +770,10 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get vip network " + str(get_wip[1]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
 
         get_cluster_wip = getVipNetworkIpNetMask(ip, csrf2, Cloud.WIP_CLUSTER_NETWORK_NAME, aviVersion)
         if get_cluster_wip[0] is None or get_cluster_wip[0] == "NOT_FOUND":
@@ -781,7 +781,7 @@ def configTkgMgmt():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get cluster  vip network " + str(get_cluster_wip[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         clusterWip = get_cluster_wip[0]
@@ -797,7 +797,7 @@ def configTkgMgmt():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy management cluster " + deploy_status[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     command = ["tanzu", "plugin", "sync"]
@@ -811,7 +811,7 @@ def configTkgMgmt():
             d = {
                 "responseType": "ERROR",
                 "msg": management_cluster + " is not deployed",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         switch = switchToManagementContext(management_cluster)
@@ -820,7 +820,7 @@ def configTkgMgmt():
             d = {
                 "responseType": "ERROR",
                 "msg": switch[0].json['msg'],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if checkEnableIdentityManagement(env):
@@ -831,7 +831,7 @@ def configTkgMgmt():
                 d = {
                     "responseType": "ERROR",
                     "msg": check_pinniped[0].json['msg'],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Validating pinniped service status")
@@ -841,7 +841,7 @@ def configTkgMgmt():
                 d = {
                     "responseType": "ERROR",
                     "msg": check_pinniped_svc[0],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Successfully validated Pinniped service status")
@@ -854,7 +854,7 @@ def configTkgMgmt():
                     d = {
                         "responseType": "ERROR",
                         "msg": check_pinniped_dexsvc[0],
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("External IP for Pinniped is set as: " + check_pinniped_svc[0])
@@ -875,14 +875,14 @@ def configTkgMgmt():
                 d = {
                     "responseType": "ERROR",
                     "msg": rbac_user_status[0].json['msg'],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Successfully created RBAC for all the provided users")
 
         else:
             current_app.logger.info("Identity Management is not enabled")
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         current_app.logger.info("TMC registration on management cluster is supported on tanzu 1.5.1")
         if checkTmcEnabled(env):
             clusterGroup = request.get_json(force=True)['componentSpec']['tkgMgmtSpec']['tkgMgmtClusterGroupName']
@@ -896,16 +896,16 @@ def configTkgMgmt():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to register on tmc " + state[1],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
         else:
-            current_app.logger.info("TMC registration is deactivated")
+            current_app.logger.info("TMC registration is disabled")
     current_app.logger.info("Deployed management cluster successfully")
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully configured management cluster ",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1620,7 +1620,7 @@ def createIpam(ip, csrf2, vipNetworkUrl, clusterVip, name, aviVersion):
                 "use_standard_alb": False
             }
         }
-    elif Tkg_version.TKG_VERSION == "1.6":
+    elif Tkg_version.TKG_VERSION == "1.5":
         body = {
             "name": name,
             "internal_profile": {
@@ -1699,7 +1699,7 @@ def updateNewCloudSeGroup(ip, csrf2, newCloudUrl, aviVersion):
         return response_csrf.json(), "SUCCESS"
 
 
-def generateSeOva(ip, csrf2, aviVersion, cloud_name):
+def generateSeOva(ip, csrf2, aviVersion):
     current_app.logger.info("Generating se ova")
     headers = {
         "Accept": "application/json",
@@ -1717,7 +1717,7 @@ def generateSeOva(ip, csrf2, aviVersion, cloud_name):
         uuid = new_cloud_json["uuid"]
     except:
         for re in new_cloud_json["results"]:
-            if re["name"] == cloud_name:
+            if re["name"] == Cloud.CLOUD_NAME:
                 uuid = re["uuid"]
     if uuid is None:
         return None, "NOT_FOUND"
@@ -1728,7 +1728,7 @@ def generateSeOva(ip, csrf2, aviVersion, cloud_name):
     modified = json.dumps(body, indent=4)
     url = "https://" + ip + "/api/fileservice/seova"
     start = time.time()
-    response_csrf = requests.request("POST", url, headers=headers, data=modified, verify=False, timeout=1800)
+    response_csrf = requests.request("POST", url, headers=headers, data=modified, verify=False, timeout=600)
     if response_csrf.status_code != 201:
         return None, response_csrf.text
     else:
@@ -1739,7 +1739,7 @@ def generateSeOva(ip, csrf2, aviVersion, cloud_name):
         return "SUCCESS", 200
 
 
-def downloadSeOva(ip, csrf2, avi_uuid, aviVersion, cloud_name):
+def downloadSeOva(ip, csrf2, avi_uuid, aviVersion):
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -1756,7 +1756,7 @@ def downloadSeOva(ip, csrf2, avi_uuid, aviVersion, cloud_name):
         uuid = new_cloud_json["uuid"]
     except:
         for re in new_cloud_json["results"]:
-            if re["name"] == cloud_name:
+            if re["name"] == Cloud.CLOUD_NAME:
                 uuid = re["uuid"]
     if uuid is None:
         return None, "NOT_FOUND"
@@ -1767,7 +1767,7 @@ def downloadSeOva(ip, csrf2, avi_uuid, aviVersion, cloud_name):
         return "SUCCESS", 200
     url = "https://" + ip + "/api/fileservice/seova?file_format=ova&cloud_uuid=" + uuid
     payload = {}
-    response_csrf = requests.request("GET", url, headers=headers, data=payload, verify=False, timeout=1800)
+    response_csrf = requests.request("GET", url, headers=headers, data=payload, verify=False, timeout=600)
     if response_csrf.status_code != 200:
         return None, response_csrf.text
     else:
@@ -1797,7 +1797,7 @@ def getClusterUUid(ip, csrf2, aviVersion):
         return response_csrf.json()["uuid"], 200
 
 
-def generateToken(ip, csrf2, aviVersion, cloud_name):
+def generateToken(ip, csrf2, aviVersion):
     with open("./newCloudInfo.json", 'r') as file2:
         new_cloud_json = json.load(file2)
     uuid = None
@@ -1805,7 +1805,7 @@ def generateToken(ip, csrf2, aviVersion, cloud_name):
         uuid = new_cloud_json["uuid"]
     except:
         for re in new_cloud_json["results"]:
-            if re["name"] == cloud_name:
+            if re["name"] == Cloud.CLOUD_NAME:
                 uuid = re["uuid"]
     if uuid is None:
         return None, "NOT_FOUND"
@@ -1835,7 +1835,7 @@ def replaceNetworkValues(ip, aviAuthToken, clusterUUid, file_name):
     }
     for key, value in property_mapping.items():
         replaceSe(file_name, "PropertyMapping", key, "Key", "Value", value)
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         dictionary_network = {
             "Management": SegmentsName.DISPLAY_NAME_AVI_MANAGEMENT,
             "Data Network 1": SegmentsName.DISPLAY_NAME_AVI_DATA_SEGMENT,
@@ -1948,7 +1948,7 @@ def deploySeEngines(vcenter_ip, vcenter_username, password, ip, aviAuthToken, cl
                               "ethernet-9"]
 
     else:
-        if Tkg_version.TKG_VERSION == "1.6":
+        if Tkg_version.TKG_VERSION == "1.5":
             network_connect = ["govc", "device.connect", "-vm", engine_name, "ethernet-0",
                                "ethernet-1", "ethernet-2", "ethernet-3", "ethernet-4"]
             network_disconnect = ["govc", "device.disconnect", "-vm", engine_name,
@@ -2075,7 +2075,7 @@ def changeMacAddressAndSeGroupInFile(vcenter_ip, vcenter_username, password, vm_
     replaceMac(file_name, mac1)
     replaceMac(file_name, mac2)
     replaceMac(file_name, mac3)
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         mac4 = d[4]
         replaceMac(file_name, mac4)
 
@@ -2101,7 +2101,7 @@ def changeMacAddressAndSeGroupInFileWorkload(vcenter_ip, vcenter_username, passw
 def generateConfigYaml(ip, datacenter, avi_version, datastoreName, cluster_name, wipIpNetmask, clusterWip, _vcenter_ip,
                        _vcenter_username,
                        _password, vmcSpec):
-    if Tkg_version.TKG_VERSION == "1.6":
+    if Tkg_version.TKG_VERSION == "1.5":
         template14MgmtDeployYaml(ip, datacenter, avi_version, datastoreName, cluster_name, wipIpNetmask, clusterWip,
                                  _vcenter_ip,
                                  _vcenter_username,
@@ -2217,7 +2217,7 @@ def managementClusterYaml14(ip, datacenter, datastoreName, cluster_name, wipIpNe
         d = {
             "responseType": "ERROR",
             "msg": "Un supported cluster size please specify small/medium/large/extra-large/custom " + size,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     avi_cluster_vip_name = Cloud.WIP_CLUSTER_NETWORK_NAME
@@ -2294,7 +2294,7 @@ def template14MgmtDeployYaml(ip, datacenter, avi_version, datastoreName, cluster
             "responseType": "ERROR",
             "msg": "Provided cluster size: " + size + "is not supported, please provide one of: "
                                                       "small/medium/large/extra-large/custom",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     try:
@@ -2389,7 +2389,7 @@ def template14MgmtDeployYaml(ip, datacenter, avi_version, datastoreName, cluster
                     d = {
                         "responseType": "ERROR",
                         "msg": "Please provide ldapUserSearchBaseDN for installing pinniped",
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 if not ldap_grp_search_base_dn:
@@ -2397,7 +2397,7 @@ def template14MgmtDeployYaml(ip, datacenter, avi_version, datastoreName, cluster
                     d = {
                         "responseType": "ERROR",
                         "msg": "Please provide ldapGroupSearchBaseDN for installing pinniped",
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
                 base64_bytes = base64.b64encode(ldap_root_ca_data.encode("utf-8"))
@@ -2596,7 +2596,7 @@ def switchContextAndApplyAko(management_cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context command",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -2606,7 +2606,7 @@ def switchContextAndApplyAko(management_cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context " + str(status[0]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     applyAkoCmd = ["kubectl", "apply", "-f", "ako_workloadset1.yaml"]
@@ -2616,7 +2616,7 @@ def switchContextAndApplyAko(management_cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Failed apply ako " + str(status[0]),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 

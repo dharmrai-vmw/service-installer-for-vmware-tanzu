@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='arcas',
-    version='1.4-1.6.0',
+    version='1.3.1-1.5.4',
     packages=['src'],
     entry_points={
         'console_scripts': [

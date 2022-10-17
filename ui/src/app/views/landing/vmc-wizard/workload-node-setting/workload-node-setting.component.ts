@@ -103,15 +103,6 @@ export class WorkloadNodeSettingComponent extends StepFormDirective implements O
     public validatedDataProtection = false;
     public credentialValidationError = "";
     public targetLocationValidationError = "";
-    // Offline VELERO
-    private enableVelero = false;
-    private veleroBucket;
-    private veleroUsername;
-    private veleroPassword;
-    private veleroRegion;
-    private veleroS3Url;
-    private veleroPublicUrl;
-
     constructor(private validationService: ValidationService,
                 private wizardFormService: VSphereWizardFormService,
                 public apiClient: APIClient,
@@ -223,13 +214,7 @@ export class WorkloadNodeSettingComponent extends StepFormDirective implements O
             new FormControl('', []));
         this.formGroup.addControl('veleroTargetLocation', 
             new FormControl('', []));
-        this.formGroup.addControl('enableVelero', new FormControl(false));
-        this.formGroup.addControl('veleroBucket', new FormControl('', []));
-        this.formGroup.addControl('veleroUsername', new FormControl('', []));
-        this.formGroup.addControl('veleroPassword', new FormControl('', []));
-        this.formGroup.addControl('veleroRegion', new FormControl('', []));
-        this.formGroup.addControl('veleroS3Url', new FormControl('', []));
-        this.formGroup.addControl('veleroPublicUrl', new FormControl('', []));
+
             SupervisedField.forEach(field => {
                 this.formGroup.get(field).valueChanges.pipe(
                     debounceTime(500),
@@ -428,32 +413,6 @@ export class WorkloadNodeSettingComponent extends StepFormDirective implements O
                         this.errorNotification = 'DHCP End IP is out of the provided subnet';
                     }
                 }
-                if(!this.apiClient.tmcEnabled) {
-                    this.subscription = this.dataService.currentWrkEnableVelero.subscribe(
-                        (enable) => this.enableVelero = enable);
-                    this.formGroup.get('enableVelero').setValue(this.enableVelero);
-                    if(this.enableVelero) {
-                        this.subscription = this.dataService.currentWrkVeleroUsername.subscribe(
-                            (username) => this.veleroUsername = username);
-                        this.formGroup.get('veleroUsername').setValue(this.veleroUsername);
-                        this.subscription = this.dataService.currentWrkVeleroPassword.subscribe(
-                            (password) => this.veleroPassword = password);
-                        this.formGroup.get('veleroPassword').setValue(this.veleroPassword);
-                        this.subscription = this.dataService.currentWrkVeleroBucketName.subscribe(
-                            (bucket) => this.veleroBucket = bucket);
-                        this.formGroup.get('veleroBucket').setValue(this.veleroBucket);
-                        this.subscription = this.dataService.currentWrkVeleroRegion.subscribe(
-                            (region) => this.veleroRegion = region);
-                        this.formGroup.get('veleroRegion').setValue(this.veleroRegion);
-                        this.subscription = this.dataService.currentWrkVeleroS3Url.subscribe(
-                            (s3Url) => this.veleroS3Url = s3Url);
-                        this.formGroup.get('veleroS3Url').setValue(this.veleroS3Url);
-                        this.subscription = this.dataService.currentWrkVeleroPublicUrl.subscribe(
-                            (publicUrl) => this.veleroPublicUrl = publicUrl);
-                        this.formGroup.get('veleroPublicUrl').setValue(this.veleroPublicUrl);                    
-                    }
-                }
-
                 if (this.apiClient.enableIdentityManagement){
                     this.subscription = this.dataService.currentWrkClusterAdminUsers.subscribe(
                         (clusterAdminUsers) => this.clusterAdminUsers = clusterAdminUsers);
@@ -999,43 +958,6 @@ export class WorkloadNodeSettingComponent extends StepFormDirective implements O
         }
     }
 
-    toggleEnableVelero() {
-        const veleroFields = [
-            'veleroUsername',
-            'veleroPassword',
-            'veleroBucket',
-            'veleroRegion',
-            'veleroS3Url',
-            'veleroPublicUrl'
-        ];
-        if (!this.apiClient.tmcEnabled && this.formGroup.value['enableVelero']) {
-            this.resurrectField('veleroUsername', [
-                Validators.required
-            ], this.formGroup.value['veleroUsername']);
-            this.resurrectField('veleroPassword', [
-                Validators.required
-            ], this.formGroup.value['veleroPassword']);
-            this.resurrectField('veleroBucket', [
-                Validators.required
-            ], this.formGroup.value['veleroBucket']);
-
-            this.resurrectField('veleroRegion', [
-                Validators.required
-            ], this.formGroup.value['veleroRegion']);
-            this.resurrectField('veleroS3Url', [
-                Validators.required, this.validationService.isHttpOrHttps()
-            ], this.formGroup.value['veleroS3Url']);
-            this.resurrectField('veleroPublicUrl', [
-                Validators.required, this.validationService.isHttpOrHttps()
-            ], this.formGroup.value['veleroPublicUrl']);
-        } else {
-            this.apiClient.sharedDataProtectonEnabled = false;
-            veleroFields.forEach((field) => {
-                this.disarmField(field, true);
-            });
-        }
-    }
-
     getDisabled(): boolean {
         return !(this.formGroup.get('veleroCredential').valid && this.formGroup.get('veleroTargetLocation').valid);
     }
@@ -1068,13 +990,6 @@ export class WorkloadNodeSettingComponent extends StepFormDirective implements O
             'enableDataProtection',
             'veleroCredential',
             'veleroTargetLocation',
-            'enableVelero',
-            'veleroUsername',
-            'veleroPassword',
-            'veleroBucket',
-            'veleroRegion',
-            'veleroS3Url',
-            'veleroPublicUrl'
         ];
 
         if (this.formGroup.value['workloadClusterSettings']) {

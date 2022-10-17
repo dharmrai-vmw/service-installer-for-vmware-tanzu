@@ -5,18 +5,17 @@ from common.common_utilities import checkTmcEnabled, get_alias_name, getPolicyID
     convertStringToCommaSeperated, supervisorTMC, configureKubectl, \
     getClusterID, checkTmcEnabled, getPolicyID, getLibraryId, \
     convertStringToCommaSeperated, supervisorTMC, configureKubectl, getBodyResourceSpec, cidr_to_netmask, \
-    seperateNetmaskAndIp, getCountOfIpAdress, createClusterFolder, check_tkgs_proxy_enabled
+    seperateNetmaskAndIp, getCountOfIpAdress, createClusterFolder
 from flask import current_app, jsonify, request
 import time
 import yaml
 import json
-import os
 import requests
 from pathlib import Path
 from ruamel import yaml as ryaml
 from common.certificate_base64 import getBase64CertWriteToFile
 import base64
-from common.operation.constants import RegexPattern, ControllerLocation, Paths, Tkgs_Extension_Details, TmcUser
+from common.operation.constants import RegexPattern, ControllerLocation, Paths
 from common.operation.ShellHelper import runShellCommandAndReturnOutput, grabKubectlCommand, grabIpAddress, \
     verifyPodsAreRunning, grabPipeOutput, runShellCommandAndReturnOutputAsList, \
     runShellCommandAndReturnOutputAsListWithChangedDir, grabPipeOutputChagedDir, runShellCommandWithPolling, runProcess
@@ -32,7 +31,7 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vc_ip,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -55,7 +54,7 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch API server cluster endpoint - " + vc_ip,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -76,7 +75,7 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create directory: " + Paths.CLUSTER_PATH + workload_name,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info(
@@ -167,8 +166,6 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
                 'tkgsVsphereWorkloadClusterSpec']["tkgsWorkloadClusterGroupName"]
             worker_vm_class = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
                 'tkgsVsphereWorkloadClusterSpec']['workerVmClass']
-            control_plane_vm_class = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
-                'tkgsVsphereWorkloadClusterSpec']['controlPlaneVmClass']
             if not clusterGroup:
                 clusterGroup = "default"
 
@@ -182,7 +179,7 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
                                                    "--allowed-storage-classes", allowed,
                                                    "--default-storage-class", default_class,
                                                    "--worker-instance-type", worker_vm_class, "--instance-type",
-                                                   control_plane_vm_class, "--worker-node-count", worker_node_count,
+                                                   worker_vm_class, "--worker-node-count", worker_node_count,
                                                    "--high-availability"]
             else:
                 workload_cluster_create_command = ["tmc", "cluster", "create", "--template", "tkgs", "-m",
@@ -194,11 +191,7 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
                                                    "--allowed-storage-classes", allowed,
                                                    "--default-storage-class", default_class,
                                                    "--worker-instance-type", worker_vm_class, "--instance-type",
-                                                   control_plane_vm_class, "--worker-node-count", worker_node_count]
-
-            if check_tkgs_proxy_enabled():
-                workload_cluster_create_command.append("--proxy-name")
-                workload_cluster_create_command.append(Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME)
+                                                   worker_vm_class, "--worker-node-count", worker_node_count]
             try:
                 control_plane_volumes = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
                     'tkgsVsphereWorkloadClusterSpec']['controlPlaneVolumes']
@@ -261,11 +254,6 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
                                       worker_volumes['storageClass'] + "]"
                 workload_cluster_create_command.append("\"" + worker_command.strip(",") + "\"")
             current_app.logger.info(workload_cluster_create_command)
-
-            os.putenv("TMC_API_TOKEN",
-                      request.get_json(force=True)["envSpec"]["saasEndpoints"]['tmcDetails']['tmcRefreshToken'])
-            listOfCmdTmcLogin = ["tmc", "login", "--no-configure", "-name", TmcUser.USER_VSPHERE]
-            runProcess(listOfCmdTmcLogin)
             worload = runShellCommandAndReturnOutputAsList(workload_cluster_create_command)
             if worload[1] != 0:
                 return None, "Failed to create  workload cluster " + str(worload[0])
@@ -296,9 +284,9 @@ def createTkgWorkloadCluster(env, vc_ip, vc_user, vc_password):
                 count = count + 1
             if not found:
                 return None, "Cluster not in ready state"
-            # status, message = attach_proxy_tkgs_workload_to_tmc()
-            # if status is None:
-            #     return None, message
+            status, message = attach_proxy_tkgs_workload_to_tmc()
+            if status is None:
+                return None, message
             return "SUCCESS", 200
         else:
             try:
@@ -680,7 +668,7 @@ def createNameSpace(vcenter_ip, vcenter_username, password):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vcenter_ip,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -927,7 +915,7 @@ def attach_proxy_tkgs_workload_to_tmc():
     except:
         proxyEnabled = False
     if proxyEnabled:
-        proxy_name = Tkgs_Extension_Details.TKGS_PROXY_CREDENTIAL_NAME
+        proxy_name = "sivt-tkgs-proxy"
         try:
             name_space = \
                 request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
@@ -940,25 +928,13 @@ def attach_proxy_tkgs_workload_to_tmc():
             mgmt = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails']['tmcSupervisorClusterName']
             url = tmc_url + "/v1alpha1/managementclusters/" + mgmt + "/provisioners/" + name_space + "/tanzukubernetesclusters"
             refreshToken = request.get_json(force=True)['envSpec']['saasEndpoints']['tmcDetails']['tmcRefreshToken']
-
-            url = "https://console.cloud.vmware.com/csp/gateway/am/api/auth/api-tokens/authorize?refresh_token=" + refreshToken
-            headers = {}
-            payload = {}
-            response_login = requests.request("POST", url, headers=headers, data=payload, verify=False)
-            if response_login.status_code != 200:
-                return "login failed using provided TMC refresh token", 500
-
-            access_token = response_login.json()["access_token"]
-
             header = {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': access_token
+                'Authorization': refreshToken
             }
-            url = tmc_url + "/v1alpha1/managementclusters/" + mgmt + "/provisioners/" + name_space + "/tanzukubernetesclusters"
             response_clusters = requests.request("GET", url, headers=header, verify=False)
             if response_clusters.status_code != 200:
-                current_app.logger.error(response_clusters.text)
                 return None, str(response_clusters.text)
             isClusterReady = False
             for cluster in response_clusters.json()["tanzuKubernetesClusters"]:
@@ -980,8 +956,8 @@ def attach_proxy_tkgs_workload_to_tmc():
                         return None, workload_name + " is  not in  ready state phase " + phase + " status " + status
             if isClusterReady:
                 current_app.logger.info("Configuring proxy in workload cluster " + workload_name)
-                clusterGroup = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
-                    'tkgsVsphereWorkloadClusterSpec']["tkgsWorkloadClusterGroupName"]
+                clusterGroup = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails'][
+                    'tmcSupervisorClusterGroupName']
                 if not clusterGroup:
                     clusterGroup = "default"
                 body = {
@@ -1026,7 +1002,6 @@ def attach_proxy_tkgs_workload_to_tmc():
                 if not isConfigured:
                     return None, "Failed to configure proxy  on workload "+workload_name+" failed to find proxy name"
         except Exception as e:
-            current_app.logger.error(str(e))
             return None, str(e)
     else:
         return "Success", "Proxy for tkgs is not enabled"
