@@ -135,7 +135,6 @@ function inject_cni() {
   yq eval '.spec.defaultCNI = '\""$url\"" -i "$file"
   echo "Successfully cni values to  $file"
 }
-
 function delete_proxy_setting() {
     yq eval 'del(.spec.proxy)' -i "$file"
 }
@@ -153,14 +152,6 @@ function inject_trust() {
 }
 function delete_trust() {
     yq eval 'del(.spec.trust)' -i "$file"
-}
-
-function inject_tkgs_proxy_kapp() {
-  yq eval "select(.kind == \"ConfigMap\").data.httpProxy |= \"$url\"" -i "$file"
-  yq eval "select(.kind == \"ConfigMap\").data.httpsProxy |= \"$key_v\"" -i "$file"
-  yq eval "select(.kind == \"ConfigMap\").data.noProxy |= \"$noProxy\"" -i "$file"
-  yq eval "select(.kind == \"ConfigMap\").data.dangerousSkipTLSVerify |= \"projects.registry.vmware.com\"" -i "$file"
-  echo "Successfully injected proxy values to  $file"
 }
 
 
@@ -246,12 +237,11 @@ case "$2" in
         inject_output_fluent)
                 inject_output_fluent
                 ;;
-        kapp_tkgs)
-                inject_tkgs_proxy_kapp
-                ;;
 
         *)
                 echo "Usage: $0 {cert|app_extention|contour|contour_tag|envoy_tag|data_values_harbor|fluent_bit|overlay}"
                 echo ""
                 echo "Use this shell script to change the value to yaml files"
 esac
+
+

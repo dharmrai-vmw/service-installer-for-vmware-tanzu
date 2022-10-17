@@ -309,7 +309,7 @@ def enableWCP(ip, csrf2, aviVersion):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -430,12 +430,7 @@ def enableWCP(ip, csrf2, aviVersion):
             mgmt_network_id = getDvPortGroupId(vCenter, vc_user, vc_password, mgmt_network_name, vc_data_center)
             if mgmt_network_id is None:
                 return None, "Failed to get management dv port id"
-            subs_lib_name = request.get_json(force=True)['tkgsComponentSpec']['tkgsMgmtNetworkSpec'][
-                'subscribedContentLibraryName']
-            if not subs_lib_name:
-                lib = getLibraryId(vCenter, vc_user, vc_password, ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY)
-            else:
-                lib = getLibraryId(vCenter, vc_user, vc_password, subs_lib_name)
+            lib = getLibraryId(vCenter, vc_user, vc_password, ControllerLocation.SUBSCRIBED_CONTENT_LIBRARY)
             if lib is None:
                 return None, "Failed to get subscribed lib id"
             cert = getAviCertificate(ip, csrf2, CertName.VSPHERE_CERT_NAME, aviVersion)

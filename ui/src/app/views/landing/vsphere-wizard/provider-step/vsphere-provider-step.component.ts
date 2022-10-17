@@ -370,7 +370,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
     }
 
     validateResourceGroupData() {
-        this.errorNotification = null;
+        this.errorNotification = '';
         if (!this.uploadStatus) {
             return true;
         } else {
@@ -470,7 +470,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
     login() {
         this.loadingState = ClrLoadingState.LOADING;
         this.connected = true;
-        this.errorNotification = null;
+        this.errorNotification = '';
         this.loadingState = ClrLoadingState.DEFAULT;
     }
 
@@ -531,7 +531,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
                     this.aviOvaImages = data.CONTENT_LIBRARY_FILES;
                     this.formGroup.get('aviOvaImage').enable();
                     this.fetchOvaImage = true;
-                    this.aviOvaErrorNotification = null;
+                    this.aviOvaErrorNotification = '';
                     if (this.uploadStatus) {
                         if (this.VcOvaImage !== '') {
                             if (this.aviOvaImages.indexOf(this.VcOvaImage) === -1) {
@@ -718,7 +718,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
                     }
                     this.apiClient.networks = data.NETWORKS;
                     this.fetchResources = true;
-                    this.errorNotification = null;
+                    this.errorNotification = '';
                     this.connected = true;
                     this.loadingState = ClrLoadingState.DEFAULT;
                     this.enableAllFormFields();
@@ -766,7 +766,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
                     this.resourcePools = data.RESOURCEPOOLS;
                     this.apiClient.networks = data.NETWORKS;
                     this.fetchResources = true;
-                    this.errorNotification = null;
+                    this.errorNotification = '';
                     this.connected = true;
                     this.loadData = true;
                     this.dataLoadingState = ClrLoadingState.DEFAULT;

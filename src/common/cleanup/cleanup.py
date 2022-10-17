@@ -40,7 +40,7 @@ def cleanup_environment():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -52,7 +52,7 @@ def cleanup_environment():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong environment provided for cleanup",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterAddress']
@@ -73,7 +73,7 @@ def cleanup_environment():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to capture VMC setup details ",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter = current_app.config['VC_IP']
@@ -84,7 +84,7 @@ def cleanup_environment():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to find VC details",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter_datacenter = request.get_json(force=True)['envSpec']['sddcDatacenter']
@@ -102,7 +102,7 @@ def cleanup_environment():
             d = {
                 "responseType": "ERROR",
                 "msg": "Cleanup failed - " + tkgs_response[0].json["msg"],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     elif env == Env.VSPHERE or env == Env.VMC or env == Env.VCF:
@@ -112,7 +112,7 @@ def cleanup_environment():
             d = {
                 "responseType": "ERROR",
                 "msg": "Cleanup failed - " + tkg_response[0].json["msg"],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -126,7 +126,7 @@ def cleanup_environment():
         d = {
             "responseType": "ERROR",
             "msg": "Cleanup failed - " + response[0].json["msg"],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -134,7 +134,7 @@ def cleanup_environment():
     d = {
         "responseType": "SUCCESS",
         "msg": "Cleanup completed ",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -147,7 +147,7 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -158,7 +158,7 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": id[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -171,7 +171,7 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
             enabled = getWCPStatus(cluster_id)
             if enabled[0]:
                 current_app.logger.info("WCP is enabled and it's status is " + enabled[1])
-                current_app.logger.info("Proceeding to deactivate WCP on cluster - " + vc_cluster)
+                current_app.logger.info("Proceeding to disable WCP on cluster - " + vc_cluster)
                 if enabled[1] == "RUNNING":
                     current_app.logger.info("Fetching list of namespaces and clusters deployed")
                     response = getAllNamespaces()
@@ -192,11 +192,11 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
                     d = {
                         "responseType": "ERROR",
                         "msg": disable[1],
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
-                current_app.logger.info("WCP is already deactivated on cluster - " + vc_cluster)
+                current_app.logger.info("WCP is already disabled on cluster - " + vc_cluster)
 
         kubectl_configs_status = kubectl_configs_cleanup(Env.VSPHERE, workload_clusters + namespaces)
         #kubectl_configs_status = kubectl_configs_cleanup(env, ['cluster-03', 'tbano-ns03'])
@@ -205,7 +205,7 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": kubectl_configs_status[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -227,7 +227,7 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
         d = {
             "responseType": "SUCCESS",
             "msg": "TKGs components deleted successfully",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
@@ -235,7 +235,7 @@ def tkgs_cleanup(vCenter, vCenter_user, VC_PASSWORD, vc_cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occured while performing cleanup",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -307,7 +307,7 @@ def tkgm_cleanup(env):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to delete cluster - " + cluster,
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -321,7 +321,7 @@ def tkgm_cleanup(env):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to delete management cluster - " + management_cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -333,7 +333,7 @@ def tkgm_cleanup(env):
         d = {
             "responseType": "ERROR",
             "msg": kubectl_configs_status[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -357,7 +357,7 @@ def tkgm_cleanup(env):
     d = {
         "responseType": "SUCCESS",
         "msg": "TKG Clusters and Nodes deleted successfully ",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -420,7 +420,7 @@ def delete_cluster(cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed delete cluster - " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         cluster_running = ["tanzu", "cluster", "list"]
@@ -570,7 +570,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
         d = {
             "responseType": "ERROR",
             "msg": avi_cleanup_status[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info(avi_cleanup_status[1])
@@ -580,7 +580,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
         d = {
             "responseType": "ERROR",
             "msg": response[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -591,7 +591,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
         d = {
             "responseType": "ERROR",
             "msg": library_response[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -603,7 +603,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
         d = {
             "responseType": "ERROR",
             "msg": cleanup_sivt[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -614,7 +614,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
         d = {
             "responseType": "ERROR",
             "msg": "Failed to delete folders which were created by SIVT",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -624,7 +624,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to delete Kubernetes templates",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         if not delete_config_yaml():
@@ -633,7 +633,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to delete config.yaml files",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -644,7 +644,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": str(headers_[1]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         headers_[1].update({"Content-Type": "application/json", "Accept": "application/json"})
@@ -657,7 +657,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": delete_policy[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Gateway policies deleted successfully")
@@ -670,7 +670,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": delete_groups[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Inventory groups and firewall rules deleted successfully")
@@ -683,7 +683,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": delete_services[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Services deleted successfully")
@@ -697,7 +697,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": delete_segments[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Segments deleted successfully")
@@ -719,7 +719,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": del_cgw_rules[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Firewall rules for Compute Gateway deleted successfully...")
@@ -732,7 +732,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": del_mgw_rules[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Firewall rules for Management Gateway deleted successfully...")
@@ -745,7 +745,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": del_services[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Services deleted successfully... ")
@@ -758,7 +758,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": del_mgw_inventory_grps[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Inventory groups for Management Gateway deleted successfully")
@@ -771,7 +771,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": del_cgw_inventory_grps[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Inventory groups for Compute Gateway deleted successfully")
@@ -785,7 +785,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
             d = {
                 "responseType": "ERROR",
                 "msg": del_segments[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Network segments deleted successfully")
@@ -793,7 +793,7 @@ def delete_common_comp(govc_client: GovcClient, env, vCenter, vCenter_user, VC_P
     d = {
         "responseType": "SUCCESS",
         "msg": "Common Components delete successful",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -831,8 +831,8 @@ def disableWCP(vCenter, cluster_id, session_id):
         current_app.logger.info("Waited " + str(count * 20) + "s, retrying")
     if not disabled:
         current_app.logger.error("Cluster is still running " + str(count * 20))
-        return None, "WCP Deactivate Failed"
-    return "SUCCESS", "WCP is Deactivated successfully"
+        return None, "WCP DISABLE Failed"
+    return "SUCCESS", "WCP is DISABLED successfully"
 
 
 def cleanup_avi_vms(govc_client, env, datacenter):
@@ -1378,6 +1378,8 @@ def list_network_segments(env):
 
     elif env == Env.VCF:
         list_of_segments = [request.get_json(force=True)['tkgComponentSpec']['aviMgmtNetwork']['aviMgmtNetworkName'],
+                            request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName'],
+                            request.get_json(force=True)['tkgWorkloadDataNetwork']['tkgWorkloadDataNetworkName'],
                             request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadNetworkName'],
                             request.get_json(force=True)['tkgComponentSpec']['tkgClusterVipNetwork']['tkgClusterVipNetworkName'],
                             request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec']['tkgSharedserviceNetworkName']]
@@ -1410,7 +1412,7 @@ def cleanup_resources_list():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -1443,7 +1445,7 @@ def cleanup_resources_list():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to capture VMC setup details ",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter = current_app.config['VC_IP']
@@ -1454,7 +1456,7 @@ def cleanup_resources_list():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to find VC details",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         vCenter_datacenter = request.get_json(force=True)['envSpec']['sddcDatacenter']
@@ -1497,7 +1499,7 @@ def cleanup_resources_list():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1506,14 +1508,14 @@ def cleanup_resources_list():
             d = {
                 "responseType": "ERROR",
                 "msg": id[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
         cluster_id = id[0]
 
         if getWCPStatus(cluster_id)[0]:
-            supervisor_cluster = "Workload Control Plane (WCP) will be deactivated on cluster: [ " + vCenter_cluster + " ]"
+            supervisor_cluster = "Workload Control Plane (WCP) will be disabled on cluster: [ " + vCenter_cluster + " ]"
         else:
             supervisor_cluster = "Workload Control Plane (WCP) is not enabled on cluster: [ " + vCenter_cluster + " ]"
 
@@ -1553,6 +1555,6 @@ def cleanup_resources_list():
         "NAMESPACES": namespaces,
         "PORT_GROUPS": network_segments,
         "SUPERVISOR_CLUSTER": supervisor_cluster,
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200

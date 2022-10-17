@@ -202,7 +202,7 @@ export class EnvDetailsComponent extends StepFormDirective implements OnInit {
     }
 
     validateResourceGroupData() {
-        this.errorNotification = null;
+        this.errorNotification = '';
         if (!this.uploadStatus) {
             return true;
         } else {
@@ -275,7 +275,7 @@ export class EnvDetailsComponent extends StepFormDirective implements OnInit {
     login() {
         this.loadingState = ClrLoadingState.LOADING;
         this.connected = true;
-        this.errorNotification = null;
+        this.errorNotification = '';
         this.loadingState = ClrLoadingState.DEFAULT;
     }
 
@@ -426,6 +426,7 @@ export class EnvDetailsComponent extends StepFormDirective implements OnInit {
                     this.apiClient.namespaceVmClass = data.VM_CLASSES;
 //                     this.getSupervisorClustersForTMC();
                     this.fetchResources = true;
+                    this.errorNotification = '';
                     this.connected = true;
                     this.dataLoadingState = ClrLoadingState.DEFAULT;
                     this.enableAllFormFields();
@@ -467,7 +468,6 @@ export class EnvDetailsComponent extends StepFormDirective implements OnInit {
         vCenterData['ssoUser'] = this.formGroup.get('username').value;
         vCenterData['ssoPassword'] = this.formGroup.get('password').value;
         this.dataLoadingState = ClrLoadingState.LOADING;
-        this.errorNotification = null;
         this.apiClient.getVsphereData(vCenterData, 'vsphere', 'tkgs-ns').subscribe((data: any) => {
               if (data && data !== null) {
                 if (data.responseType === 'SUCCESS') {

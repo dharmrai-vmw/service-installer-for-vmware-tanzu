@@ -168,16 +168,7 @@
          "tkgSharedserviceClusterGroupName":"",
          "tkgSharedserviceEnableDataProtection":"false",
          "tkgSharedClusterCredential":"",
-         "tkgSharedClusterBackupLocation":"",
-         "tkgSharedClusterVeleroDataProtection":{
-            "enableVelero":"false",
-            "username": "",
-            "passwordBase64": "",
-            "bucketName": "",
-            "backupRegion": "",
-            "backupS3Url": "",
-            "backupPublicUrl": ""
-         }
+         "tkgSharedClusterBackupLocation":""
       }
    },
    "tkgMgmtDataNetwork":{
@@ -222,16 +213,7 @@
       "tkgWorkloadClusterGroupName":"",
       "tkgWorkloadEnableDataProtection":"false",
       "tkgWorkloadClusterCredential":"",
-      "tkgWorkloadClusterBackupLocation":"",
-      "tkgWorkloadClusterVeleroDataProtection":{
-         "enableVelero":"false",
-         "username": "",
-         "passwordBase64": "",
-         "bucketName": "",
-         "backupRegion": "",
-         "backupS3Url": "",
-         "backupPublicUrl": ""
-      }
+      "tkgWorkloadClusterBackupLocation":""
    },
    "harborSpec":{
       "enableHarborExtension":"true",

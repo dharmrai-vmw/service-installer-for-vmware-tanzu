@@ -32,7 +32,6 @@ class Paths(str, Enum):
     JSON_SPEC_PATH = "config/deployment-config.json"
     SCALE_PATH = "desired-state/scale.yml"
     REPAVE_PATH = "desired-state/repave.yml"
-    VALUES_YAML_PATH = "arcas-tekton-cicd/values.yaml"
 
     # Supported extensions files
     EXT_COMMON_ROOT_DIR = "arcas-tekton-cicd/scripts/common"
@@ -707,8 +706,6 @@ class CertName:
     VSPHERE_COMMON_NAME = "tkgvsphere-avi-cert_common_name"
 
 class Env:
-    TKGS = "tkgs"
-    TKGM = "tkgm"
     VMC = "vmc"
     VSPHERE = "vsphere"
     VCF = "vcf"
@@ -744,7 +741,6 @@ class RegexPattern:
     RECONCILE_FAILED = 'Reconcile failed'
     IP_ADDRESS = "\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
     URL_REGEX_PORT = "(?:http.*://)?(?P<host>[^:/ ]+).?(?P<port>[0-9]*).*"
-    deleting = "deleting"
 
 class AkoType:
     KEY = 'type'

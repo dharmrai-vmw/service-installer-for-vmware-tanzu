@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 from pyVim import connect
 from pyVim.connect import Disconnect
 from pyVmomi import vim
-from pyVmomi import pbm, VmomiSupport, SoapStubAdapter
 import atexit
 import base64
 # import env_variables
@@ -38,12 +37,11 @@ import requests
 from flask import Flask, request
 from pyVim.connect import Disconnect, SmartConnect
 import ipaddress
-import uuid
 
 # sys.path.append("../")
 from common.operation.vcenter_operations import get_dc, get_ds, get_obj
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from common.operation.ShellHelper import runShellCommandWithPolling,grabPipeOutput, runProcess, runShellCommandAndReturnOutputAsList
+from common.operation.ShellHelper import runShellCommandWithPolling, runProcess, runShellCommandAndReturnOutputAsList
 from common.operation.constants import Env, MarketPlaceUrl, Tkgs_Extension_Details, Versions
 from common.session.session_acquire import login
 from common.util.ssl_helper import decode_from_b64
@@ -57,9 +55,9 @@ from common.common_utilities import checkMachineCountForTsm, checkClusterSizeFor
     fetchNamespaceInfo, isAviHaEnabled, getAviIpFqdnDnsMapping, checkNtpServerValidity, verifyVcenterVersion, \
     configureKubectl, checkDataProtectionEnabled, validate_backup_location, validate_cluster_credential, \
     list_cluster_groups, checkEnableIdentityManagement, checkMachineCountForProdType, checkAVIPassword, \
-    checkClusterNameDNSCompliant, ping_test, check_tanzu_license, check_nsxt_license, check_vsphere_license
+    checkClusterNameDNSCompliant
 
-# check_tanzu_license, check_nsxt_license, check_vsphere_license
+    #check_tanzu_license, check_nsxt_license, check_vsphere_license
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 __author__ = 'Tasmiya'
@@ -133,7 +131,7 @@ def enable_proxy():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -143,13 +141,13 @@ def enable_proxy():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong value for ['arcasVm']['enableProxy'] is provided, provide either true/false",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Configured, proxy successfully",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     current_app.logger.info("Pre-check Successful")
     return jsonify(d), 200
@@ -163,7 +161,7 @@ def disable_proxy():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -173,13 +171,13 @@ def disable_proxy():
         d = {
             "responseType": "ERROR",
             "msg": "Disabling proxy on service installer VM failed",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
-        "msg": "Successfully deactivated proxy on service installer VM",
-        "STATUS_CODE": 200
+        "msg": "Successfully disabled proxy on service installer VM",
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -192,7 +190,7 @@ def precheck_env():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -211,7 +209,7 @@ def precheck_env():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong value for ['arcasVm']['enableProxy'] is provided, provide either true/false",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     except Exception as e:
@@ -219,548 +217,510 @@ def precheck_env():
         d = {
             "responseType": "ERROR",
             "msg": "Failed while checking ['proxySpec']['arcasVm'] proxy details, please re-check input JSON file",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
-    login()
+    try:
+        if env == Env.VSPHERE:
+            shared_cluster_name = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
+                'tkgSharedserviceClusterName']
+        elif env == Env.VCF:
+            shared_cluster_name = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
+                'tkgSharedserviceClusterName']
+        elif env == Env.VMC:
+            shared_cluster_name = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
+                'tkgSharedClusterName']
+
+        if shared_cluster_name:
+            isShared = True
+        else:
+            isShared = False
+    except Exception as e:
+        isShared = False
 
     try:
-        with open(r'/tmp/skipPrecheck.txt', 'r') as file:
-            skip_precheck = file.read()
-        if skip_precheck.lower() == "true":
-            skip_precheck = True
-        else:
-            skip_precheck = False
-    except:
-        skip_precheck = False
-
-    if not skip_precheck:
-        current_app.logger.info("Performing pre-checks on environment")
-
-        try:
-            if env == Env.VSPHERE:
-                shared_cluster_name = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
-                    'tkgSharedserviceClusterName']
-            elif env == Env.VCF:
-                shared_cluster_name = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
-                    'tkgSharedserviceClusterName']
-            elif env == Env.VMC:
-                shared_cluster_name = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec'][
-                    'tkgSharedClusterName']
-
-            if shared_cluster_name:
-                isShared = True
-            else:
-                isShared = False
-        except Exception as e:
-            isShared = False
-
-        try:
-            if env == Env.VSPHERE:
-                workload_cluster_name = request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadClusterName']
-            elif env == Env.VCF:
-                workload_cluster_name = request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadClusterName']
-            elif env == Env.VMC:
-                workload_cluster_name = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
-                    'tkgWorkloadClusterName']
-
-            if workload_cluster_name:
-                isWorkload = True
-            else:
-                isWorkload = False
-        except Exception as e:
-            isWorkload = False
-
-        val = validate_proxy_starts_wit_http(env, isShared, isWorkload)
-        if val != "Success":
-            current_app.logger.error(
-                "Error: Unsupported Proxy protocol found for " + val + ", The Proxy URLs must start with http://")
-            d = {
-                "responseType": "ERROR",
-                "msg": "Error: Unsupported Proxy protocol found for " + val + ", The Proxy URLs must start with http://",
-                "STATUS_CODE": 500
-            }
-            return jsonify(d), 500
-        doc = dockerLoginAndConnectivityCheck(env)
-        if doc[1] != 200:
-            current_app.logger.error(str(doc[0].json['msg']))
-            d = {
-                "responseType": "ERROR",
-                "msg": str(doc[0].json['msg']),
-                "STATUS_CODE": 500
-            }
-            return jsonify(d), 500
-        if not checkAirGappedIsEnabled(env):
-            if not (isEnvTkgs_wcp(env) or isEnvTkgs_ns(env)):
-                if checkTmcEnabled(env):
-                    osFlavor = checkOSFlavorForTMC(env, isShared, isWorkload)
-                    if osFlavor[1] != 200:
-                        current_app.logger.info(str(osFlavor[0].json['msg']))
-                        d = {
-                            "responseType": "ERROR",
-                            "msg": str(osFlavor[0].json['msg']),
-                            "STATUS_CODE": 500
-                        }
-                        return jsonify(d), 500
-
-        if not (isEnvTkgs_wcp(env) or isEnvTkgs_ns(env)):
-            if isWorkload:
-                to = checkClusterSizeForTo(env)
-                if to[1] != 200:
-                    current_app.logger.debug(str(to[0].json['msg']))
-                    # d = {
-                    #     "responseType": "ERROR",
-                    #     "msg": str(to[0].json['msg']),
-                    #     "STATUS_CODE": 500
-                    # }
-                    # return jsonify(d), 500
-                tsm = checkMachineCountForTsm(env)
-                if tsm[1] != 200:
-                    current_app.logger.debug("Recommended to use atleast 3 worker machine count for TSM integration")
-                #     d = {
-                #         "responseType": "ERROR",
-                #         "msg": str(tsm[0].json['msg']),
-                #         "STATUS_CODE": 500
-                #     }
-                #     return jsonify(d), 500
-            if isShared or isWorkload:
-                prod_machine_count = checkMachineCountForProdType(env, isShared, isWorkload)
-                if prod_machine_count[1] != 200:
-                    current_app.logger.error(str(prod_machine_count[0].json['msg']))
-                    d = {
-                        "responseType": "ERROR",
-                        "msg": str(prod_machine_count[0].json['msg']),
-                        "STATUS_CODE": 500
-                    }
-                    return jsonify(d), 500
-        os.system("cp common/vsphere-overlay.yaml " + Env.YTT_FILE_LOCATION)
-        os.putenv("HOME", "/root")
-        cmd = ["sudo", "sysctl", "net/netfilter/nf_conntrack_max=131072"]
-        runShellCommandWithPolling(cmd)
-        si = None
-        errors = []
-        # license_check_status = licensePrechecks(env)
-        # if license_check_status[1] != 200:
-        #     d = {
-        #         "responseType": "ERROR",
-        #         "msg": license_check_status[0].json["msg"],
-        #         "STATUS_CODE": 500
-        #     }
-        #     return jsonify(d), 500
-
-        if env == Env.VSPHERE or env == Env.VCF:
-            vCenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterAddress']
-            if not is_ipv4(vCenter):
-                ip = getIpFromHost(vCenter)
-                if ip is None:
-                    current_app.logger.error('Failed to fetch VC ip')
-                    d = {
-                        "responseType": "ERROR",
-                        "msg": "Failed to fetch VC ip",
-                        "STATUS_CODE": 500
-                    }
-                    return jsonify(d), 500
-            vCenter_user = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterSsoUser']
-            str_enc = str(request.get_json(force=True)['envSpec']['vcenterDetails']["vcenterSsoPasswordBase64"])
-            base64_bytes = str_enc.encode('ascii')
-            enc_bytes = base64.b64decode(base64_bytes)
-            VC_PASSWORD = enc_bytes.decode('ascii').rstrip("\n")
-            vCenter_datacenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterDatacenter']
-            vCenter_cluster = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterCluster']
-            if not isEnvTkgs_ns(env):
-                vCenter_datastore = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterDatastore']
-                ntp_server = request.get_json(force=True)['envSpec']['infraComponents']['ntpServers']
-            if env == Env.VSPHERE:
-                if isEnvTkgs_wcp(env):
-                    portGroups = [
-                        request.get_json(force=True)['tkgsComponentSpec']['aviMgmtNetwork']['aviMgmtNetworkName'],
-                        request.get_json(force=True)['tkgsComponentSpec']['tkgsVipNetwork']['tkgsVipNetworkName'],
-                        request.get_json(force=True)['tkgsComponentSpec']['tkgsMgmtNetworkSpec'][
-                            'tkgsMgmtNetworkName'],
-                        request.get_json(force=True)['tkgsComponentSpec']['tkgsPrimaryWorkloadNetwork'][
-                            'tkgsPrimaryWorkloadPortgroupName']]
-                elif not isEnvTkgs_ns(env):
-                    portGroups = [
-                        request.get_json(force=True)['tkgComponentSpec']['aviMgmtNetwork']['aviMgmtNetworkName'],
-                        request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents']['tkgMgmtNetworkName'],
-                        request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName']]
-                    if isWorkload:
-                        portGroups.append(
-                            request.get_json(force=True)['tkgWorkloadDataNetwork']['tkgWorkloadDataNetworkName'])
-                        portGroups.append(request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadNetworkName'])
-
+        if env == Env.VSPHERE:
+            workload_cluster_name = request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadClusterName']
+        elif env == Env.VCF:
+            workload_cluster_name = request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadClusterName']
         elif env == Env.VMC:
-            vCenter = current_app.config['VC_IP']
-            vCenter_user = current_app.config['VC_USER']
-            VC_PASSWORD = current_app.config['VC_PASSWORD']
-            ntp_server = request.get_json(force=True)['envVariablesSpec']['ntpServersIp']
-            if not (vCenter or vCenter_user or VC_PASSWORD):
-                current_app.logger.error('Failed to fetch VC details')
+            workload_cluster_name = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec'][
+                'tkgWorkloadClusterName']
+
+        if workload_cluster_name:
+            isWorkload = True
+        else:
+            isWorkload = False
+    except Exception as e:
+        isWorkload = False
+
+    val = validate_proxy_starts_wit_http(env, isShared, isWorkload)
+    if val != "Success":
+        current_app.logger.error(
+            "Error: Unsupported Proxy protocol found for " + val + ", The Proxy URLs must start with http://")
+        d = {
+            "responseType": "ERROR",
+            "msg": "Error: Unsupported Proxy protocol found for " + val + ", The Proxy URLs must start with http://",
+            "ERROR_CODE": 500
+        }
+        return jsonify(d), 500
+    doc = dockerLoginAndConnectivityCheck(env)
+    if doc[1] != 200:
+        current_app.logger.error(str(doc[0].json['msg']))
+        d = {
+            "responseType": "ERROR",
+            "msg": str(doc[0].json['msg']),
+            "ERROR_CODE": 500
+        }
+        return jsonify(d), 500
+    if not checkAirGappedIsEnabled(env):
+        if not (isEnvTkgs_wcp(env) or isEnvTkgs_ns(env)):
+            if checkTmcEnabled(env):
+                osFlavor = checkOSFlavorForTMC(env, isShared, isWorkload)
+                if osFlavor[1] != 200:
+                    current_app.logger.info(str(osFlavor[0].json['msg']))
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": str(osFlavor[0].json['msg']),
+                        "ERROR_CODE": 500
+                    }
+                    return jsonify(d), 500
+
+    if not (isEnvTkgs_wcp(env) or isEnvTkgs_ns(env)):
+        if isWorkload:
+            to = checkClusterSizeForTo(env)
+            if to[1] != 200:
+                current_app.logger.debug(str(to[0].json['msg']))
+                # d = {
+                #     "responseType": "ERROR",
+                #     "msg": str(to[0].json['msg']),
+                #     "ERROR_CODE": 500
+                # }
+                # return jsonify(d), 500
+            tsm = checkMachineCountForTsm(env)
+            if tsm[1] != 200:
+                current_app.logger.debug("Recommended to use atleast 3 worker machine count for TSM integration")
+            #     d = {
+            #         "responseType": "ERROR",
+            #         "msg": str(tsm[0].json['msg']),
+            #         "ERROR_CODE": 500
+            #     }
+            #     return jsonify(d), 500
+        if isShared or isWorkload:
+            prod_machine_count = checkMachineCountForProdType(env, isShared, isWorkload)
+            if prod_machine_count[1] != 200:
+                current_app.logger.error(str(prod_machine_count[0].json['msg']))
                 d = {
                     "responseType": "ERROR",
-                    "msg": "Failed to find VC details",
-                    "STATUS_CODE": 500
+                    "msg": str(prod_machine_count[0].json['msg']),
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
+    os.system("cp common/vsphere-overlay.yaml " + Env.YTT_FILE_LOCATION)
+    os.putenv("HOME", "/root")
+    cmd = ["sudo", "sysctl", "net/netfilter/nf_conntrack_max=131072"]
+    runShellCommandWithPolling(cmd)
+    si = None
+    errors = []
+    current_app.logger.info("Performing pre-checks on environment")
+    login()
+    # license_check_status = licensePrechecks(env)
+    # if license_check_status[1] != 200:
+    #     d = {
+    #         "responseType": "ERROR",
+    #         "msg": license_check_status[0].json["msg"],
+    #         "ERROR_CODE": 500
+    #     }
+    #     return jsonify(d), 500
 
-            vCenter_datacenter = request.get_json(force=True)['envSpec']['sddcDatacenter']
-            vCenter_cluster = request.get_json(force=True)['envSpec']['sddcCluster']
-            vCenter_datastore = request.get_json(force=True)['envSpec']['sddcDatastore']
+    if env == Env.VSPHERE or env == Env.VCF:
+        vCenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterAddress']
+        if not is_ipv4(vCenter):
+            ip = getIpFromHost(vCenter)
+            if ip is None:
+                current_app.logger.error('Failed to fetch VC ip')
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to fetch VC ip",
+                    "ERROR_CODE": 500
+                }
+                return jsonify(d), 500
+        vCenter_user = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterSsoUser']
+        str_enc = str(request.get_json(force=True)['envSpec']['vcenterDetails']["vcenterSsoPasswordBase64"])
+        base64_bytes = str_enc.encode('ascii')
+        enc_bytes = base64.b64decode(base64_bytes)
+        VC_PASSWORD = enc_bytes.decode('ascii').rstrip("\n")
+        vCenter_datacenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterDatacenter']
+        vCenter_cluster = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterCluster']
+        if not isEnvTkgs_ns(env):
+            vCenter_datastore = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterDatastore']
+            ntp_server = request.get_json(force=True)['envSpec']['infraComponents']['ntpServers']
+        if env == Env.VSPHERE:
+            if isEnvTkgs_wcp(env):
+                portGroups = [
+                    request.get_json(force=True)['tkgsComponentSpec']['aviMgmtNetwork']['aviMgmtNetworkName'],
+                    request.get_json(force=True)['tkgsComponentSpec']['tkgsVipNetwork']['tkgsVipNetworkName'],
+                    request.get_json(force=True)['tkgsComponentSpec']['tkgsMgmtNetworkSpec'][
+                        'tkgsMgmtNetworkName'],
+                    request.get_json(force=True)['tkgsComponentSpec']['tkgsPrimaryWorkloadNetwork'][
+                        'tkgsPrimaryWorkloadPortgroupName']]
+            elif not isEnvTkgs_ns(env):
+                portGroups = [
+                    request.get_json(force=True)['tkgComponentSpec']['aviMgmtNetwork']['aviMgmtNetworkName'],
+                    request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents']['tkgMgmtNetworkName'],
+                    request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName']]
+                if isWorkload:
+                    portGroups.append(
+                        request.get_json(force=True)['tkgWorkloadDataNetwork']['tkgWorkloadDataNetworkName'])
+                    portGroups.append(request.get_json(force=True)['tkgWorkloadComponents']['tkgWorkloadNetworkName'])
+
+    elif env == Env.VMC:
+        vCenter = current_app.config['VC_IP']
+        vCenter_user = current_app.config['VC_USER']
+        VC_PASSWORD = current_app.config['VC_PASSWORD']
+        ntp_server = request.get_json(force=True)['envVariablesSpec']['ntpServersIp']
+        if not (vCenter or vCenter_user or VC_PASSWORD):
+            current_app.logger.error('Failed to fetch VC details')
+            d = {
+                "responseType": "ERROR",
+                "msg": "Failed to find VC details",
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+
+        vCenter_datacenter = request.get_json(force=True)['envSpec']['sddcDatacenter']
+        vCenter_cluster = request.get_json(force=True)['envSpec']['sddcCluster']
+        vCenter_datastore = request.get_json(force=True)['envSpec']['sddcDatastore']
+
+    try:
+        si = connect.SmartConnectNoSSL(host=vCenter, user=vCenter_user, pwd=VC_PASSWORD)
+        content = si.RetrieveContent()
+        vcVersion = content.about.version
+        try:
+            if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
+                version_check = verifyVCVersion(vcVersion)
+                if version_check[0] is None:
+                    current_app.logger.error(version_check[1])
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": version_check[1],
+                        "ERROR_CODE": 500
+                    }
+                    return jsonify(d), 500
+                current_app.logger.info("Successfully verified vCenter Version " + vcVersion)
+        except Exception as e:
+            current_app.logger.error(e)
+            d = {
+                "responseType": "ERROR",
+                "msg": "Pre-check failed " + str(e),
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+        # if datacenter itself is not found, pre-check fail
+        try:
+            datacenter = get_dc(si, vCenter_datacenter)
+        except Exception as e:
+            current_app.logger.error(e)
+            d = {
+                "responseType": "ERROR",
+                "msg": "Pre-check failed " + str(e),
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
 
         try:
-            si = connect.SmartConnectNoSSL(host=vCenter, user=vCenter_user, pwd=VC_PASSWORD)
-            content = si.RetrieveContent()
-            vcVersion = content.about.version
-            try:
-                if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
-                    version_check = verifyVCVersion(vcVersion)
-                    if version_check[0] is None:
-                        current_app.logger.error(version_check[1])
-                        d = {
-                            "responseType": "ERROR",
-                            "msg": version_check[1],
-                            "STATUS_CODE": 500
-                        }
-                        return jsonify(d), 500
-                    current_app.logger.info("Successfully verified vCenter Version " + vcVersion)
-            except Exception as e:
-                current_app.logger.error(e)
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Pre-check failed " + str(e),
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            # if datacenter itself is not found, pre-check fail
-            try:
-                datacenter = get_dc(si, vCenter_datacenter)
-            except Exception as e:
-                current_app.logger.error(e)
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Pre-check failed " + str(e),
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
+            cluster_obj = get_cluster(si, datacenter, vCenter_cluster)
+            if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
+                hostCount = verify_host_count(cluster_obj)
+                if hostCount[0] is None:
+                    current_app.logger.error(hostCount[1])
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": hostCount[1],
+                        "ERROR_CODE": 500
+                    }
+                    return jsonify(d), 500
+                current_app.logger.info("Successfully verified number of hosts on cluster: " + vCenter_cluster)
+        except Exception as e:
+            errors.append(e)
 
+        if not isEnvTkgs_ns(env):
             try:
-                cluster_obj = get_cluster(si, datacenter, vCenter_cluster)
-                if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
-                    hostCount = verify_host_count(cluster_obj)
-                    if hostCount[0] is None:
-                        current_app.logger.error(hostCount[1])
-                        d = {
-                            "responseType": "ERROR",
-                            "msg": hostCount[1],
-                            "STATUS_CODE": 500
-                        }
-                        return jsonify(d), 500
-                    current_app.logger.info("Successfully verified number of hosts on cluster: " + vCenter_cluster)
+                get_ds(si, datacenter, vCenter_datastore)
             except Exception as e:
                 errors.append(e)
 
-            if not isEnvTkgs_ns(env):
+            if env == Env.VSPHERE:
                 try:
-                    get_ds(si, datacenter, vCenter_datastore)
+                    for portgroup in portGroups:
+                        getNetwork(datacenter, portgroup)
                 except Exception as e:
                     errors.append(e)
 
-                if env == Env.VSPHERE:
-                    try:
-                        for portgroup in portGroups:
-                            getNetwork(datacenter, portgroup)
-                    except Exception as e:
-                        errors.append(e)
-
-            if errors:
-                current_app.logger.error("Pre-check failed with following errors")
-                for error in errors:
-                    current_app.logger.error(error)
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Pre-check failed " + str(errors),
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-
-        except IOError as e:
-            atexit.register(Disconnect, si)
+        if errors:
+            current_app.logger.error("Pre-check failed with following errors")
+            for error in errors:
+                current_app.logger.error(error)
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to connect to vCenter. " + str(e),
-                "STATUS_CODE": 500
+                "msg": "Pre-check failed " + str(errors),
+                "ERROR_CODE": 500
             }
-            current_app.logger.error("Failed to connect to vCenter. " + str(e))
             return jsonify(d), 500
 
-        if isEnvTkgs_ns(env):
-            refreshToken = ""
-        elif env == Env.VSPHERE or env == Env.VCF:
-            refreshToken = request.get_json(force=True)['envSpec']['marketplaceSpec']['refreshToken']
-        elif env == Env.VMC:
-            refreshToken = request.get_json(force=True)['marketplaceSpec']['refreshToken']
-        if not refreshToken:
-            current_app.logger.info("MarketPlace refreshToken is not provided")
-        else:
-            token_valdity = validateMarketplaceRefreshToken()
-            if token_valdity[1] != 200:
-                # if not ('msg' in token_valdity[0]):
-                current_app.logger.error(
-                    "Marketplace token validation failed. Please ensure connectivity to external networks.")
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Marketplace token validation failed. Please ensure connectivity to external networks.",
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-        os.putenv("GOVC_URL", "https://" + vCenter + "/sdk")
-        os.putenv("GOVC_USERNAME", vCenter_user)
-        os.putenv("GOVC_PASSWORD", VC_PASSWORD)
-        os.putenv("GOVC_INSECURE", "true")
-        # else:
-        # down = downloadAviControllerAndPushToContentLibrary(vCenter, vCenter_user, VC_PASSWORD, env)
-        # if down[0] is None:
-        # current_app.logger.error(down[1])
-        # d = {
-        # "responseType": "ERROR",
-        # "msg": down[1],
-        # "STATUS_CODE": 500
-        # }
-        # return jsonify(d), 500
-        # customer = request.get_json(force=True)['envSpec']['resource-spec']['avi-pulse-jwt-token']
-        # password = request.get_json(force=True)['envSpec']['resource-spec']['avi-pulse-jwt-token']
-        # if not customer or not password:
-        # current_app.logger.info("Customer connect user/password not provided")
-        # else:
-        # Kubernetes download
-        # if isEnvTkgs(env):
-        # current_app.logger.info("Photon checks not required")
-        # else:
-        # push = downloadAndPushKubernetesOvaMarketPlace(env)
-        # if push[0] is None:
-        # current_app.logger.error(push[1])
-        # d = {
-        # "responseType": "ERROR",
-        # "msg": push[1],
-        # "STATUS_CODE": 500
-        # }
-        # return jsonify(d), 500
-        if isEnvTkgs_wcp(env):
-            hadrs_status = verifyHADRS(content, vCenter_cluster)
-            if hadrs_status[1] != 200:
-                current_app.logger.error(hadrs_status[0])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": hadrs_status[0],
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            namespace_status = checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, vCenter_cluster)
-            if namespace_status[1] != 200:
-                current_app.logger.error(namespace_status[0])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": namespace_status[0],
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            current_app.logger.info("Ping check on Supervisor control plane VMs' management network interfaces Ips")
-            mgmt_ping_status = pingCheckTkgsMgmtStartIp()
-            if not mgmt_ping_status[0]:
-                current_app.logger.error(mgmt_ping_status[1])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": mgmt_ping_status[1],
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            if checkTmcEnabled(env):
-                current_app.logger.info("Checking whether Supervisor cluster name is DNS Compliant")
-                supervisor_cluster_name = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails'][
-                    'tmcSupervisorClusterName']
-                dns_compliant = checkClusterNameDNSCompliant(supervisor_cluster_name, env)
-                if not dns_compliant[0]:
-                    current_app.logger.error("Failed while checking if Supervisor cluster name is DNS Compliant")
-                    d = {
-                        "responseType": "ERROR",
-                        "msg": dns_compliant[1],
-                        "STATUS_CODE": 500
-                    }
-                    return jsonify(d), 500
+    except IOError as e:
+        atexit.register(Disconnect, si)
+        d = {
+            "responseType": "ERROR",
+            "msg": "Failed to connect to vCenter. " + str(e),
+            "ERROR_CODE": 500
+        }
+        current_app.logger.error("Failed to connect to vCenter. " + str(e))
+        return jsonify(d), 500
 
-        elif isEnvTkgs_ns(env):
-            current_app.logger.info("Checking if WCP is enabled on selected cluster...")
-            cluster_id = getClusterID(vCenter, vCenter_user, VC_PASSWORD, vCenter_cluster)
-            if cluster_id[1] != 200:
-                current_app.logger.error(cluster_id[0])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": cluster_id[0],
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-
-            cluster_id = cluster_id[0]
-            wcp_status = isWcpEnabled(cluster_id)
-            if wcp_status[0]:
-                current_app.logger.info("WCP check passed.")
-            else:
-                current_app.logger.error("WCP is not enabled on the given cluster - " + vCenter_cluster)
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "WCP is not enabled on the given cluster - " + vCenter_cluster,
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            if checTSMEnabled(env) or checkToEnabled(env):
-                worker_size = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
-                    'tkgsVsphereWorkloadClusterSpec']['workerNodeCount']
-                if int(worker_size) < 3:
-                    current_app.logger.error("Minimum required number of worker nodes for SaaS integrations is 3, "
-                                             "and recommended size is medium and above")
-                    d = {
-                        "responseType": "ERROR",
-                        "msg": "Minimum required number of worker nodes for SaaS integrations is 3,"
-                               " and recommended size is medium and above",
-                        "STATUS_CODE": 500
-                    }
-                    return jsonify(d), 500
-                else:
-                    current_app.logger.info("Worker nodes requirement check passed for TSM and TO.")
-            else:
-                current_app.logger.info("TSM and TO not is enabled.")
-
-            current_app.logger.info("Checking User-Managed Packages' compatibility with provided workload cluster version")
-            if verifyVcenterVersion(Versions.VCENTER_UPDATE_TWO):
-                supported_versions = Tkgs_Extension_Details.SUPPORTED_VERSIONS_U2
-            else:
-                supported_versions = Tkgs_Extension_Details.SUPPORTED_VERSIONS_U3
-
-            cluster_version = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
-                'tkgsVsphereWorkloadClusterSpec']['tkgsVsphereWorkloadClusterVersion']
-            if not cluster_version.startswith('v'):
-                cluster_version = 'v' + cluster_version
-            if cluster_version not in supported_versions:
-                current_app.logger.warn("Provided Tanzu K8s version is not validated for User-Managed"
-                                        " Packages such as Harbor, Prometheus and Grafana - " + cluster_version)
-            else:
-                current_app.logger.info("Provided Tanzu K8s version is validated for User-Managed "
-                                        "Packages such as Harbor, Prometheus and Grafana - " + cluster_version)
-
-            policy_validation = checkWorkloadStoragePolicies(env)
-            if policy_validation[0] is None:
-                current_app.logger.error(policy_validation[1])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Storage Policy validation failed for workload cluster",
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            else:
-                current_app.logger.info(policy_validation[1])
-            current_app.logger.info("Checking whether Workload cluster name is DNS Compliant")
-            supervisor_cluster_name = \
-                request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
-                    'tkgsVsphereWorkloadClusterSpec'][
-                    'tkgsVsphereWorkloadClusterName']
+    if isEnvTkgs_ns(env):
+        refreshToken = ""
+    elif env == Env.VSPHERE or env == Env.VCF:
+        refreshToken = request.get_json(force=True)['envSpec']['marketplaceSpec']['refreshToken']
+    elif env == Env.VMC:
+        refreshToken = request.get_json(force=True)['marketplaceSpec']['refreshToken']
+    if not refreshToken:
+        current_app.logger.info("MarketPlace refreshToken is not provided")
+    else:
+        token_valdity = validateMarketplaceRefreshToken()
+        if token_valdity[1] != 200:
+            # if not ('msg' in token_valdity[0]):
+            current_app.logger.error(
+                "Marketplace token validation failed. Please ensure connectivity to external networks.")
+            d = {
+                "responseType": "ERROR",
+                "msg": "Marketplace token validation failed. Please ensure connectivity to external networks.",
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+    os.putenv("GOVC_URL", "https://" + vCenter + "/sdk")
+    os.putenv("GOVC_USERNAME", vCenter_user)
+    os.putenv("GOVC_PASSWORD", VC_PASSWORD)
+    os.putenv("GOVC_INSECURE", "true")
+    # else:
+    # down = downloadAviControllerAndPushToContentLibrary(vCenter, vCenter_user, VC_PASSWORD, env)
+    # if down[0] is None:
+    # current_app.logger.error(down[1])
+    # d = {
+    # "responseType": "ERROR",
+    # "msg": down[1],
+    # "ERROR_CODE": 500
+    # }
+    # return jsonify(d), 500
+    # customer = request.get_json(force=True)['envSpec']['resource-spec']['avi-pulse-jwt-token']
+    # password = request.get_json(force=True)['envSpec']['resource-spec']['avi-pulse-jwt-token']
+    # if not customer or not password:
+    # current_app.logger.info("Customer connect user/password not provided")
+    # else:
+    # Kubernetes download
+    # if isEnvTkgs(env):
+    # current_app.logger.info("Photon checks not required")
+    # else:
+    # push = downloadAndPushKubernetesOvaMarketPlace(env)
+    # if push[0] is None:
+    # current_app.logger.error(push[1])
+    # d = {
+    # "responseType": "ERROR",
+    # "msg": push[1],
+    # "ERROR_CODE": 500
+    # }
+    # return jsonify(d), 500
+    if isEnvTkgs_wcp(env):
+        hadrs_status = verifyHADRS(content, vCenter_cluster)
+        if hadrs_status[1] != 200:
+            current_app.logger.error(hadrs_status[0])
+            d = {
+                "responseType": "ERROR",
+                "msg": hadrs_status[0],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+        namespace_status = checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, vCenter_cluster)
+        if namespace_status[1] != 200:
+            current_app.logger.error(namespace_status[0])
+            d = {
+                "responseType": "ERROR",
+                "msg": namespace_status[0],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+        current_app.logger.info("Ping check on Supervisor control plane VMs' management network interfaces Ips")
+        mgmt_ping_status = pingCheckTkgsMgmtStartIp()
+        if not mgmt_ping_status[0]:
+            current_app.logger.error(mgmt_ping_status[1])
+            d = {
+                "responseType": "ERROR",
+                "msg": mgmt_ping_status[1],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+        if checkTmcEnabled(env):
+            current_app.logger.info("Checking whether Supervisor cluster name is DNS Compliant")
+            supervisor_cluster_name = request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails'][
+                'tmcSupervisorClusterName']
             dns_compliant = checkClusterNameDNSCompliant(supervisor_cluster_name, env)
             if not dns_compliant[0]:
                 current_app.logger.error("Failed while checking if Supervisor cluster name is DNS Compliant")
                 d = {
                     "responseType": "ERROR",
                     "msg": dns_compliant[1],
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-        if not isEnvTkgs_ns(env):
-            current_app.logger.info("Checking if NTP server is valid")
-            valid_ntp_server = validityOfNtpServer(ntp_server=ntp_server)
-            # Checking Validity of NTP Server
-            if not valid_ntp_server[0]:
-                current_app.logger.error(valid_ntp_server[1])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": valid_ntp_server[1],
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
 
-        if not isEnvTkgs_ns(env):
-            current_app.logger.info("NSX ALB Password complexity check..")
-            password_check = checkAVIPassword(env)
-            if not password_check[0]:
-                current_app.logger.error("NSX ALB Password and Backup passphrase must contain a combination of 3: "
-                                         "Uppercase character, Lowercase character, Numeric or Special Character.")
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Password complexity check failed for NSX ALB",
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-
-        if not (isEnvTkgs_ns(env) or env == Env.VMC):
-            # Ping test on AVI Controller IP
-            current_app.logger.info("Checking ping response for AVI Controller IPs")
-            ping_test_avi_ip = pingCheckAviControllerIp()
-            if not ping_test_avi_ip[0]:
-                current_app.logger.error(ping_test_avi_ip[1])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": ping_test_avi_ip[1],
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-
-            # Checking DNS Resolution of AVI FQDN
-            current_app.logger.info("Checking that the AVI Load balancer FQDN and "
-                                    "IP addresses are valid and can be resolved successfully.")
-            avi_ip_fqdn_check = checkAVIFqdnDNSResolution()
-            if not avi_ip_fqdn_check[0]:
-                current_app.logger.error(avi_ip_fqdn_check[1])
-
-        veleroResponse = veleroPrechecks(env, isShared, isWorkload)
-        if veleroResponse[1] != 200:
+    elif isEnvTkgs_ns(env):
+        current_app.logger.info("Checking if WCP is enabled on selected cluster...")
+        cluster_id = getClusterID(vCenter, vCenter_user, VC_PASSWORD, vCenter_cluster)
+        if cluster_id[1] != 200:
+            current_app.logger.error(cluster_id[0])
             d = {
                 "responseType": "ERROR",
-                "msg": veleroResponse[0].json["msg"],
-                "STATUS_CODE": 500
+                "msg": cluster_id[0],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+
+        cluster_id = cluster_id[0]
+        wcp_status = isWcpEnabled(cluster_id)
+        if wcp_status[0]:
+            current_app.logger.info("WCP check passed.")
+        else:
+            current_app.logger.error("WCP is not enabled on the given cluster - " + vCenter_cluster)
+            d = {
+                "responseType": "ERROR",
+                "msg": "WCP is not enabled on the given cluster - " + vCenter_cluster,
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+        if checTSMEnabled(env) or checkToEnabled(env):
+            worker_size = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
+                'tkgsVsphereWorkloadClusterSpec']['workerNodeCount']
+            if int(worker_size) < 3:
+                current_app.logger.error("Minimum required number of worker nodes for SaaS integrations is 3, "
+                                         "and recommended size is medium and above")
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Minimum required number of worker nodes for SaaS integrations is 3,"
+                           " and recommended size is medium and above",
+                    "ERROR_CODE": 500
+                }
+                return jsonify(d), 500
+            else:
+                current_app.logger.info("Worker nodes requirement check passed for TSM and TO.")
+        else:
+            current_app.logger.info("TSM and TO not is enabled.")
+
+        current_app.logger.info("Checking User-Managed Packages' compatibility with provided workload cluster version")
+        if verifyVcenterVersion(Versions.VCENTER_UPDATE_TWO):
+            supported_versions = Tkgs_Extension_Details.SUPPORTED_VERSIONS_U2
+        else:
+            supported_versions = Tkgs_Extension_Details.SUPPORTED_VERSIONS_U3
+
+        cluster_version = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
+            'tkgsVsphereWorkloadClusterSpec']['tkgsVsphereWorkloadClusterVersion']
+        if not cluster_version.startswith('v'):
+            cluster_version = 'v' + cluster_version
+        if cluster_version not in supported_versions:
+            current_app.logger.warn("Provided Tanzu K8s version is not validated for User-Managed"
+                                    " Packages such as Harbor, Prometheus and Grafana - " + cluster_version)
+        else:
+            current_app.logger.info("Provided Tanzu K8s version is validated for User-Managed "
+                                    "Packages such as Harbor, Prometheus and Grafana - " + cluster_version)
+
+        policy_validation = checkWorkloadStoragePolicies(env)
+        if policy_validation[0] is None:
+            current_app.logger.error(policy_validation[1])
+            d = {
+                "responseType": "ERROR",
+                "msg": "Storage Policy validation failed for workload cluster",
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
-            current_app.logger.info("Data protection pre-requisites validated successfully")
+            current_app.logger.info(policy_validation[1])
+        current_app.logger.info("Checking whether Workload cluster name is DNS Compliant")
+        supervisor_cluster_name = \
+            request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
+                'tkgsVsphereWorkloadClusterSpec'][
+                'tkgsVsphereWorkloadClusterName']
+        dns_compliant = checkClusterNameDNSCompliant(supervisor_cluster_name, env)
+        if not dns_compliant[0]:
+            current_app.logger.error("Failed while checking if Supervisor cluster name is DNS Compliant")
+            d = {
+                "responseType": "ERROR",
+                "msg": dns_compliant[1],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+    if not isEnvTkgs_ns(env):
+        current_app.logger.info("Checking if NTP server is valid")
+        valid_ntp_server = validityOfNtpServer(ntp_server=ntp_server)
+        # Checking Validity of NTP Server
+        if not valid_ntp_server[0]:
+            current_app.logger.error(valid_ntp_server[1])
+            d = {
+                "responseType": "ERROR",
+                "msg": valid_ntp_server[1],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
 
-        current_app.logger.info("Validating given VM Storage Policies for encryption...")
-        if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
-            encryption_validation = validatePolicies(si, env)
-            if not encryption_validation[0]:
-                current_app.logger.error(encryption_validation[1])
-                current_app.logger.error("Deployment with encrypted storage policies is not supported. "
-                                         "Please disable encryption on given policies")
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Storage Policy validation failed.",
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            current_app.logger.info(encryption_validation[1])
+    if not isEnvTkgs_ns(env):
+        current_app.logger.info("NSX ALB Password complexity check..")
+        password_check = checkAVIPassword(env)
+        if not password_check[0]:
+            current_app.logger.error("NSX ALB Password and Backup passphrase must contain a combination of 3: "
+                                     "Uppercase character, Lowercase character, Numeric or Special Character.")
+            d = {
+                "responseType": "ERROR",
+                "msg": "Password complexity check failed for NSX ALB",
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
 
-        current_app.logger.info("Pre-check Successful")
+    if not (isEnvTkgs_ns(env) or env == Env.VMC):
+        # Ping test on AVI Controller IP
+        current_app.logger.info("Checking ping response for AVI Controller IPs")
+        ping_test_avi_ip = pingCheckAviControllerIp()
+        if not ping_test_avi_ip[0]:
+            current_app.logger.error(ping_test_avi_ip[1])
+            d = {
+                "responseType": "ERROR",
+                "msg": ping_test_avi_ip[1],
+                "ERROR_CODE": 500
+            }
+            return jsonify(d), 500
+
+        # Checking DNS Resolution of AVI FQDN
+        current_app.logger.info("Checking that the AVI Load balancer FQDN and "
+                                "IP addresses are valid and can be resolved successfully.")
+        avi_ip_fqdn_check = checkAVIFqdnDNSResolution()
+        if not avi_ip_fqdn_check[0]:
+            current_app.logger.error(avi_ip_fqdn_check[1])
+
+    veleroResponse = veleroPrechecks(env, isShared, isWorkload)
+    if veleroResponse[1] != 200:
         d = {
-            "responseType": "SUCCESS",
-            "msg": "Pre-check performed Successfully",
-            "STATUS_CODE": 200
+            "responseType": "ERROR",
+            "msg": veleroResponse[0].json["msg"],
+            "ERROR_CODE": 500
         }
-        return jsonify(d), 200
+        return jsonify(d), 500
     else:
-        current_app.logger.warn("Skipping Pre-checks for environment may lead to failure in deployment. "
-                                "Make sure to remove \"--skip_precheck\" option from arcas command to perform pre-checks")
-        d = {
-            "responseType": "SUCCESS",
-            "msg": "Pre-check of environment has been skipped",
-            "STATUS_CODE": 200
-        }
-        return jsonify(d), 200
+        current_app.logger.info("Data protection pre-requisites validated successfully")
+    d = {
+        "responseType": "SUCCESS",
+        "msg": "Pre-check performed Successfully",
+        "ERROR_CODE": 200
+    }
+    current_app.logger.info("Pre-check Successful")
+    return jsonify(d), 200
 
 
 @vcenter_precheck.route("/api/tanzu/validateIP", methods=['POST'])
@@ -771,7 +731,7 @@ def validateip():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -883,14 +843,14 @@ def validateip():
         d = {
             "responseType": "ERROR",
             "msg": "pre-check failed " + str(errors),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     else:
         d = {
             "responseType": "SUCCESS",
             "msg": "IP Validation is Successful",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         current_app.logger.info("IP Validation is Successful")
         return jsonify(d), 200
@@ -904,7 +864,7 @@ def validateTMCRefreshToken():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -917,7 +877,7 @@ def validateTMCRefreshToken():
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Skipping TMC refresh token validation as tmcAvailability is set to false",
-                    "STATUS_CODE": 200
+                    "ERROR_CODE": 200
                 }
                 return jsonify(d), 200
             else:
@@ -931,7 +891,7 @@ def validateTMCRefreshToken():
             d = {
                 "responseType": "ERROR",
                 "msg": "TMC refresh token is found null, please enter a valid TMC token",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -940,7 +900,7 @@ def validateTMCRefreshToken():
             d = {
                 "responseType": "ERROR",
                 "msg": validateStatus[0],
-                "STATUS_CODE": validateStatus[1]
+                "ERROR_CODE": validateStatus[1]
             }
             current_app.logger.error(validateStatus[0])
             return jsonify(d), validateStatus[1]
@@ -948,14 +908,14 @@ def validateTMCRefreshToken():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "TMC refresh token validation Passed",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -968,7 +928,7 @@ def validateSDDCRefreshToken():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -980,7 +940,7 @@ def validateSDDCRefreshToken():
                 d = {
                     "responseType": "ERROR",
                     "msg": "SDDC refresh token is found null, please enter a valid SDDC token",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             sddc_validateStatus = validateToken(SDDC_TOKEN, ['VMware Cloud on AWS'])
@@ -988,21 +948,21 @@ def validateSDDCRefreshToken():
                 d = {
                     "responseType": "ERROR",
                     "msg": sddc_validateStatus[0],
-                    "STATUS_CODE": sddc_validateStatus[1]
+                    "ERROR_CODE": sddc_validateStatus[1]
                 }
                 current_app.logger.error(sddc_validateStatus[0])
                 return jsonify(d), sddc_validateStatus[1]
             d = {
                 "responseType": "SUCCESS",
                 "msg": "SDDC refresh token validation Passed",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1015,7 +975,7 @@ def validateMarketplaceRefreshToken():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -1030,7 +990,7 @@ def validateMarketplaceRefreshToken():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Marketplace refresh token is found null, please enter a valid marketplace token",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -1049,7 +1009,7 @@ def validateMarketplaceRefreshToken():
             d = {
                 "responseType": "ERROR",
                 "msg": "Unable to login to MarketPlace using provided refresh token, please enter a valid marketplace token",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             current_app.logger.error(
                 "Unable to login to MarketPlace using provided refresh token, please enter a valid marketplace token")
@@ -1059,14 +1019,14 @@ def validateMarketplaceRefreshToken():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Marketplace refresh token validation Passed",
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
         return jsonify(d), 200
     except Exception as e:
         d = {
             "responseType": "ERROR",
             "msg": str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1079,7 +1039,7 @@ def pingTestSupervisorControlPlane():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -1090,7 +1050,7 @@ def pingTestSupervisorControlPlane():
         d = {
             "responseType": "ERROR",
             "msg": mgmt_ping_status[1],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1098,7 +1058,7 @@ def pingTestSupervisorControlPlane():
     d = {
         "responseType": "SUCCESS",
         "msg": "Ping test for Supervisor control plane VMs' PASSED",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1111,7 +1071,7 @@ def aviNameResolution():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -1130,7 +1090,7 @@ def aviNameResolution():
             d = {
                 "responseType": "ERROR",
                 "msg": ping_test_avi_ip[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Ping test successful")
@@ -1143,14 +1103,14 @@ def aviNameResolution():
             d = {
                 "responseType": "ERROR",
                 "msg": avi_ip_fqdn_check[1],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     current_app.logger.info("Successfully found name resolution of NSX ALB FQDN with controller IP")
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully found name resolution of NSX ALB FQDN with controller IP",
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1165,7 +1125,7 @@ def validateToken(token, serviceList):
             d = {
                 "responseType": "ERROR",
                 "msg": serviceList[0] + " login failed using Refresh_Token ",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             body = json.dumps(response_login)
             if 'message' in body:
@@ -1246,7 +1206,7 @@ def verifyHADRS(content, clusterName):
         d = {
             "responseType": "ERROR",
             "msg": msg,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1257,7 +1217,7 @@ def verifyHADRS(content, clusterName):
         d = {
             "responseType": "ERROR",
             "msg": msg,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1268,14 +1228,14 @@ def verifyHADRS(content, clusterName):
         d = {
             "responseType": "ERROR",
             "msg": msg,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
     d = {
         "responseType": "SUCCESS",
         "msg": "HA and DRS is enabled on cluster: " + clusterName,
-        "STATUS_CODE": 200
+        "ERROR_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1286,7 +1246,7 @@ def checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, cluster):
         d = {
             "responseType": "ERROR",
             "msg": "vCenter credentials not found",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1296,7 +1256,7 @@ def checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, cluster):
         d = {
             "responseType": "ERROR",
             "msg": cluster_id[0].json["msg"],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     try:
@@ -1305,7 +1265,7 @@ def checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch session ID for vCenter - " + vCenter,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -1327,7 +1287,7 @@ def checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch vSphere Namespace compatibility status with VDS for the given cluster- " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1335,14 +1295,14 @@ def checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, cluster):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "vSphere Namespace compatible with VDS for the given cluster " + cluster,
-                "STATUS_CODE": 200
+                "ERROR_CODE": 200
             }
             return jsonify(d), 200
         else:
             d = {
                 "responseType": "ERROR",
                 "msg": "vSphere Namespace is not compatible with VDS for the given cluster " + cluster,
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
     except Exception as e:
@@ -1350,7 +1310,7 @@ def checkClusterNamespace(vCenter, vCenter_user, VC_PASSWORD, cluster):
         d = {
             "responseType": "ERROR",
             "msg": "vSphere Namespace is not compatible with VDS for the given cluster " + cluster,
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1401,7 +1361,7 @@ def getClusterVersionsFullList(vCenter, vcenter_username, password, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": cluster_id[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1419,7 +1379,7 @@ def getClusterVersionsFullList(vCenter, vcenter_username, password, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": configure_kubectl[0],
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1434,7 +1394,7 @@ def getClusterVersionsFullList(vCenter, vcenter_username, password, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed while connecting to Supervisor Cluster",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         switch_context = ["kubectl", "config", "use-context", endpoint_ip]
@@ -1444,7 +1404,7 @@ def getClusterVersionsFullList(vCenter, vcenter_username, password, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to use context " + str(output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1455,7 +1415,7 @@ def getClusterVersionsFullList(vCenter, vcenter_username, password, cluster):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to fetch cluster versions " + str(versions_output[0]),
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1465,7 +1425,7 @@ def getClusterVersionsFullList(vCenter, vcenter_username, password, cluster):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while fetching cluster versions list- " + str(e),
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1484,80 +1444,6 @@ def checkClusterVersionCompatibility(vc_ip, vc_user, vc_password, cluster_name, 
                     return False, "Incompatible cluster version provided for workload creation - " + version
         else:
             return False, "Provided version not found in cluster versions list - " + version
-
-
-def GetPbmConnection(vpxdStub):
-    VmomiSupport.GetRequestContext()["vcSessionCookie"] = \
-        vpxdStub.cookie.split('"')[1]
-    hostname = vpxdStub.host.split(":")[0]
-    pbm_stub = SoapStubAdapter(
-        host=hostname,
-        version="pbm.version.version1",
-        path="/pbm/sdk",
-        poolSize=0,
-        sslContext=ssl._create_unverified_context())
-    pbm_si = pbm.ServiceInstance("ServiceInstance", pbm_stub)
-    pbm_content = pbm_si.RetrieveContent()
-    return pbm_content
-
-
-def validatePolicies(si, env):
-    policies = []
-    if isEnvTkgs_wcp(env):
-        policies.append(str(request.get_json(force=True)["tkgsComponentSpec"]["tkgsStoragePolicySpec"]["imageStoragePolicy"]))
-        policies.append(str(request.get_json(force=True)["tkgsComponentSpec"]["tkgsStoragePolicySpec"]["ephemeralStoragePolicy"]))
-        policies.append(str(request.get_json(force=True)["tkgsComponentSpec"]["tkgsStoragePolicySpec"]["masterStoragePolicy"]))
-    elif isEnvTkgs_ns(env):
-        namespace_specs = request.get_json(force=True)['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
-            'tkgsVsphereNamespaceStorageSpec']
-
-        for storage_policy in namespace_specs:
-            policies.append(storage_policy['storagePolicy'])
-    else:
-        return False, "Wrong environment type provided for storage policies validation - " + env
-
-    policies = [*set(policies)]   # remove duplicates
-    pbmContent = GetPbmConnection(si._stub)
-    pm = pbmContent.profileManager
-    profileIds = pm.PbmQueryProfile(resourceType=pbm.profile.ResourceType(
-        resourceType="STORAGE"), profileCategory="REQUIREMENT"
-    )
-    profiles = []
-    if len(profileIds) > 0:
-        profiles = pm.PbmRetrieveContent(profileIds=profileIds)
-
-    for policy_name in policies:
-        for profile in profiles:
-            if profile.name == policy_name:
-                #current_app.logger.info("Name: %s " % profile.name)
-                #current_app.logger.info("ID: %s " % profile.profileId.uniqueId)
-                #current_app.logger.info("Description: %s " % profile.description)
-                if hasattr(profile.constraints, 'subProfiles'):
-                    subprofiles = profile.constraints.subProfiles
-                    for subprofile in subprofiles:
-                        #current_app.logger.info("RuleSetName: %s " % subprofile.name)
-                        capabilities = subprofile.capability
-                        if is_encrypted_policy(capabilities, policy_name):
-                            return False, policy_name + " is encrypted!"
-
-    return True, "Provided storage policies are not encrypted."
-
-
-def is_encrypted_policy(capabilities, policy):
-    current_app.logger.info("Found below properties for - " + policy)
-    for capability in capabilities:
-        for constraint in capability.constraint:
-            if hasattr(constraint, 'propertyInstance'):
-                for propertyInstance in constraint.propertyInstance:
-                    try:
-                        current_app.logger.info("\tKey: %s Value: %s" % (propertyInstance.id,
-                                                                         propertyInstance.value))
-                        uuid.UUID(str(propertyInstance.id))
-                        return True
-                    except ValueError:
-                        pass
-
-    return False
 
 
 def checkWorkloadStoragePolicies(env):
@@ -1683,31 +1569,11 @@ def checkAVIFqdnDNSResolution():
                     return False, "Provide NSX ALB Controller node-01 Fqdn and IP"
 
         if dns_server:
-            try:
-                with open(r'/opt/vmware/arcas/tools/isharbor.txt', 'r') as file:
-                    isharbor_requested = file.read()
-                if isharbor_requested.strip("\n").strip("\r").strip() == "true":
-                    with open(r'/opt/vmware/arcas/tools/harbor_fqdn.txt', 'r') as file:
-                        data = file.read()
-                    fqdn = data.strip("\n").strip("\r").strip()
-                    main_command = ["ifconfig", "eth0"]
-                    sub_command = ["awk", '/inet addr/ {gsub("addr:", "", $2); print $2}']
-                    command = grabPipeOutput(main_command, sub_command)
-                    avi_controller_fqdn_ip_dict[fqdn] = command[0]
-                    requiredChecking = True
-                    msg = "FQDN and Ip entries successfully validated on DNS Server"
-                else:
-                    requiredChecking = False
-            except:
-                requiredChecking = False
             avi_ip_fqdn_dns_entry = getAviIpFqdnDnsMapping(avi_controller_fqdn_ip_dict, dns_server.split(','))
             if avi_ip_fqdn_dns_entry[1] != 200:
                 return False, avi_ip_fqdn_dns_entry[0]
             else:
-                if requiredChecking:
-                    return True, msg
-                else:
-                    return True, "NSX ALB FQDN and Ip entries successfully validated on DNS Server"
+                return True, "NSX ALB FQDN and Ip entries successfully validated on DNS Server"
         else:
             return False, "Please provide Valid DNS Server"
 
@@ -1886,6 +1752,21 @@ def pingCheckAviControllerIp():
         return False, "Exception occurred while pinging AVI Controller IPs"
 
 
+def ping_test(string_command):
+    try:
+        command = string_command.split(" ")
+        l, o = runShellCommandAndReturnOutputAsList(command)
+        s = l[4].replace(" ", "")
+        if s.__contains__(",100.0%packetloss,"):
+            return 1
+        elif s.__contains__(",0%packetloss,"):
+            return 0
+        else:
+            return 1
+    except:
+        return 1
+
+
 def veleroPrechecks(env, isShared, isWorkload):
     try:
         current_app.logger.info("checking pre-requisites for data protection")
@@ -1899,7 +1780,7 @@ def veleroPrechecks(env, isShared, isWorkload):
                         d = {
                             "responseType": "ERROR",
                             "msg": valid_backup[1],
-                            "STATUS_CODE": 500
+                            "ERROR_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info(valid_backup[1])
@@ -1909,7 +1790,7 @@ def veleroPrechecks(env, isShared, isWorkload):
                         d = {
                             "responseType": "ERROR",
                             "msg": valid_credential[1],
-                            "STATUS_CODE": 500
+                            "ERROR_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info(valid_credential[1])
@@ -1925,7 +1806,7 @@ def veleroPrechecks(env, isShared, isWorkload):
                         d = {
                             "responseType": "ERROR",
                             "msg": valid_backup[1],
-                            "STATUS_CODE": 500
+                            "ERROR_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info(valid_backup[1])
@@ -1935,7 +1816,7 @@ def veleroPrechecks(env, isShared, isWorkload):
                         d = {
                             "responseType": "ERROR",
                             "msg": valid_credential[1],
-                            "STATUS_CODE": 500
+                            "ERROR_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info(valid_credential[1])
@@ -1947,7 +1828,7 @@ def veleroPrechecks(env, isShared, isWorkload):
         d = {
             "responseType": "SUCCESS",
             "msg": "Data protection prerequisites validated successfully",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
@@ -1955,126 +1836,124 @@ def veleroPrechecks(env, isShared, isWorkload):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while validating data protection prerequisites",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
 
-def licensePrechecks(env):
-    try:
-        current_app.logger.info("Checking License Expiration status")
-        current_app.logger.info("Logging into vCenter API with supplied credentials ")
-        if env == Env.VSPHERE or env == Env.VCF:
-            vCenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterAddress']
-            vCenter_user = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterSsoUser']
-            str_enc = str(request.get_json(force=True)['envSpec']['vcenterDetails']["vcenterSsoPasswordBase64"])
-            base64_bytes = str_enc.encode('ascii')
-            enc_bytes = base64.b64decode(base64_bytes)
-            VC_PASSWORD = enc_bytes.decode('ascii').rstrip("\n")
-        elif env == Env.VMC:
-            vCenter = current_app.config['VC_IP']
-            vCenter_user = current_app.config['VC_USER']
-            VC_PASSWORD = current_app.config['VC_PASSWORD']
-        else:
-            current_app.logger.error("ERROR: Unsupported env type provided")
-            d = {
-                "responseType": "ERROR",
-                "msg": "ERROR: Unsupported env type provided",
-                "STATUS_CODE": 500
-            }
-            return jsonify(d), 500
-
-        vc_service_instance = get_si(vCenter, vCenter_user, VC_PASSWORD)
-        if not vc_service_instance[1]:
-            current_app.logger.error("Failed to retrieve Service Instance from the provided vCenter details")
-            current_app.logger.debug(vc_service_instance[0])
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to retrieve Service Instance from the provided vCenter details",
-                "STATUS_CODE": 500
-            }
-            return jsonify(d), 500
-        vc_service_instance = vc_service_instance[0]
-        atexit.register(Disconnect, vc_service_instance)
-        content = vc_service_instance.RetrieveContent()
-        licenseAssignmentManager = content.licenseManager.licenseAssignmentManager
-        assignedLicenses = licenseAssignmentManager.QueryAssignedLicenses()
-        if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
-            tanzu_license_status = check_tanzu_license(assignedLicenses)
-            if not tanzu_license_status[1]:
-                current_app.logger.error("ERROR: Got error while validating Tanzu Standard License Expiration")
-                current_app.logger.error(tanzu_license_status[0])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "ERROR: Got error while validating Tanzu Standard License Expiration",
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            current_app.logger.info("Tanzu Standard license expiration is successfully validated")
-            current_app.logger.info("Tanzu Standard license will expire at: " + tanzu_license_status[0])
-        if env == Env.VCF:
-            nsxt_license_status = check_nsxt_license(assignedLicenses)
-            if not nsxt_license_status[1]:
-                current_app.logger.error("ERROR: Got error while validating NSXT License Expiration")
-                current_app.logger.error(nsxt_license_status[0])
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "ERROR: Got error while validating NSXT License Expiration",
-                    "STATUS_CODE": 500
-                }
-                return jsonify(d), 500
-            current_app.logger.info("NSXT license expiration is successfully validated")
-            current_app.logger.info("NSXT license will expire at: " + nsxt_license_status[0])
-        vsphere_license_status = check_vsphere_license(assignedLicenses)
-        if not vsphere_license_status[1]:
-            current_app.logger.error("ERROR: Got error while validating vSphere License Expiration")
-            current_app.logger.error(vsphere_license_status[0])
-            d = {
-                "responseType": "ERROR",
-                "msg": "ERROR: Got error while validating vSphere License Expiration",
-                "STATUS_CODE": 500
-            }
-            return jsonify(d), 500
-        current_app.logger.info("vCenter Server license expiration is successfully validated")
-        current_app.logger.info("vCenter Server license will expire at: " + vsphere_license_status[0])
-        d = {
-
-            "responseType": "SUCCESS",
-            "msg": "Licenses validated successfully",
-            "STATUS_CODE": 200
-        }
-        return jsonify(d), 200
-    except Exception as e:
-        current_app.logger.error(str(e))
-        d = {
-            "responseType": "ERROR",
-            "msg": "Exception occurred while validating license expiration",
-            "STATUS_CODE": 500
-        }
-        return jsonify(d), 500
-
-
-def get_si(host, user, password):
-    # PyVMomi work to get all VMs on VC
-    try:
-        service_instance = None
-        # TODO UPDATE PORT Number here, used 443 hardcoded
-        context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        context.verify_mode = ssl.CERT_NONE
-        service_instance = SmartConnect(host=host, user=user, pwd=password, port=int('443'), sslContext=context)
-
-        if not service_instance:
-            current_app.logger.error("ERROR: Could not connect to the specified vCenter host using specified username "
-                                     "and password")
-            return None, False
-        else:
-            return service_instance, True
-    except Exception as e:
-        current_app.logger.error("ERROR: Got an exception while connecting to specified vCenter host")
-        current_app.logger.debug(str(e))
-        return str(e), False
-
-
+# def licensePrechecks(env):
+#     try:
+#         current_app.logger.info("Checking License Expiration status")
+#         current_app.logger.info("Logging into vCenter API with supplied credentials ")
+#         if env == Env.VSPHERE or env == Env.VCF:
+#             vCenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterAddress']
+#             vCenter_user = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterSsoUser']
+#             str_enc = str(request.get_json(force=True)['envSpec']['vcenterDetails']["vcenterSsoPasswordBase64"])
+#             base64_bytes = str_enc.encode('ascii')
+#             enc_bytes = base64.b64decode(base64_bytes)
+#             VC_PASSWORD = enc_bytes.decode('ascii').rstrip("\n")
+#         elif env == Env.VMC:
+#             vCenter = current_app.config['VC_IP']
+#             vCenter_user = current_app.config['VC_USER']
+#             VC_PASSWORD = current_app.config['VC_PASSWORD']
+#         else:
+#             current_app.logger.error("ERROR: Unsupported env type provided")
+#             d = {
+#                 "responseType": "ERROR",
+#                 "msg": "ERROR: Unsupported env type provided",
+#                 "ERROR_CODE": 500
+#             }
+#             return jsonify(d), 500
+#
+#         vc_service_instance = get_si(vCenter, vCenter_user, VC_PASSWORD)
+#         if not vc_service_instance[1]:
+#             current_app.logger.error("Failed to retrieve Service Instance from the provided vCenter details")
+#             current_app.logger.debug(vc_service_instance[0])
+#             d = {
+#                 "responseType": "ERROR",
+#                 "msg": "Failed to retrieve Service Instance from the provided vCenter details",
+#                 "ERROR_CODE": 500
+#             }
+#             return jsonify(d), 500
+#         vc_service_instance = vc_service_instance[0]
+#         atexit.register(Disconnect, vc_service_instance)
+#         content = vc_service_instance.RetrieveContent()
+#         licenseAssignmentManager = content.licenseManager.licenseAssignmentManager
+#         assignedLicenses = licenseAssignmentManager.QueryAssignedLicenses()
+#         if isEnvTkgs_wcp(env) or isEnvTkgs_ns(env):
+#             tanzu_license_status = check_tanzu_license(assignedLicenses)
+#             if not tanzu_license_status[1]:
+#                 current_app.logger.error("ERROR: Got error while validating Tanzu Standard License Expiration")
+#                 current_app.logger.error(tanzu_license_status[0])
+#                 d = {
+#                     "responseType": "ERROR",
+#                     "msg": "ERROR: Got error while validating Tanzu Standard License Expiration",
+#                     "ERROR_CODE": 500
+#                 }
+#                 return jsonify(d), 500
+#             current_app.logger.info("Tanzu Standard license expiration is successfully validated")
+#             current_app.logger.info("Tanzu Standard license will expire at: " + tanzu_license_status[0])
+#         if env == Env.VCF:
+#             nsxt_license_status = check_nsxt_license(assignedLicenses)
+#             if not nsxt_license_status[1]:
+#                 current_app.logger.error("ERROR: Got error while validating NSXT License Expiration")
+#                 current_app.logger.error(nsxt_license_status[0])
+#                 d = {
+#                     "responseType": "ERROR",
+#                     "msg": "ERROR: Got error while validating NSXT License Expiration",
+#                     "ERROR_CODE": 500
+#                 }
+#                 return jsonify(d), 500
+#             current_app.logger.info("NSXT license expiration is successfully validated")
+#             current_app.logger.info("NSXT license will expire at: " + nsxt_license_status[0])
+#         vsphere_license_status = check_vsphere_license(assignedLicenses)
+#         if not vsphere_license_status[1]:
+#             current_app.logger.error("ERROR: Got error while validating vSphere License Expiration")
+#             current_app.logger.error(vsphere_license_status[0])
+#             d = {
+#                 "responseType": "ERROR",
+#                 "msg": "ERROR: Got error while validating vSphere License Expiration",
+#                 "ERROR_CODE": 500
+#             }
+#             return jsonify(d), 500
+#         current_app.logger.info("vCenter Server license expiration is successfully validated")
+#         current_app.logger.info("vCenter Server license will expire at: " + vsphere_license_status[0])
+#         d = {
+#
+#             "responseType": "SUCCESS",
+#             "msg": "Licenses validated successfully",
+#             "ERROR_CODE": 200
+#         }
+#         return jsonify(d), 200
+#     except Exception as e:
+#         current_app.logger.error(str(e))
+#         d = {
+#             "responseType": "ERROR",
+#             "msg": "Exception occurred while validating license expiration",
+#             "ERROR_CODE": 500
+#         }
+#         return jsonify(d), 500
+#
+#
+# def get_si(host, user, password):
+#     # PyVMomi work to get all VMs on VC
+#     try:
+#         service_instance = None
+#         # TODO UPDATE PORT Number here, used 443 hardcoded
+#         context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+#         context.verify_mode = ssl.CERT_NONE
+#         service_instance = SmartConnect(host=host, user=user, pwd=password, port=int('443'), sslContext=context)
+#
+#         if not service_instance:
+#             current_app.logger.error("ERROR: Could not connect to the specified vCenter host using specified username "
+#                                      "and password")
+#             return None, False
+#         else:
+#             return service_instance, True
+#     except Exception as e:
+#         current_app.logger.error("ERROR: Got an exception while connecting to specified vCenter host")
+#         current_app.logger.debug(str(e))
+#         return str(e), False
 # @vcenter_precheck.route("/api/tanzu/verifyLdapConnect", methods=['POST'])
 # def verify_ldap_connect():
 #     env = envCheck()
@@ -2083,7 +1962,7 @@ def get_si(host, user, password):
 #         d = {
 #             "responseType": "ERROR",
 #             "msg": "Wrong env provided " + env[0],
-#             "STATUS_CODE": 500
+#             "ERROR_CODE": 500
 #         }
 #         return jsonify(d), 500
 #     env = env[0]
@@ -2094,7 +1973,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'SUCCESS',
 #             'msg': ldap_connect_status[1],
-#             'STATUS_CODE': 200
+#             'ERROR_CODE': 200
 #         }
 #         return jsonify(d), 200
 #     else:
@@ -2102,7 +1981,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'ERROR',
 #             'msg': ldap_connect_status[1],
-#             'STATUS_CODE': 500
+#             'ERROR_CODE': 500
 #         }
 #         return jsonify(d), 500
 
@@ -2115,7 +1994,7 @@ def get_si(host, user, password):
 #         d = {
 #             "responseType": "ERROR",
 #             "msg": "Wrong env provided " + env[0],
-#             "STATUS_CODE": 500
+#             "ERROR_CODE": 500
 #         }
 #         return jsonify(d), 500
 #     env = env[0]
@@ -2126,7 +2005,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'SUCCESS',
 #             'msg': ldap_bind_status[1],
-#             'STATUS_CODE': 200
+#             'ERROR_CODE': 200
 #         }
 #         return jsonify(d), 200
 #     else:
@@ -2134,7 +2013,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'ERROR',
 #             'msg': ldap_bind_status[1],
-#             'STATUS_CODE': 500
+#             'ERROR_CODE': 500
 #         }
 #         return jsonify(d), 500
 
@@ -2147,7 +2026,7 @@ def get_si(host, user, password):
 #         d = {
 #             "responseType": "ERROR",
 #             "msg": "Wrong env provided " + env[0],
-#             "STATUS_CODE": 500
+#             "ERROR_CODE": 500
 #         }
 #         return jsonify(d), 500
 #     env = env[0]
@@ -2158,7 +2037,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'SUCCESS',
 #             'msg': ldap_user_search_status[1],
-#             'STATUS_CODE': 200
+#             'ERROR_CODE': 200
 #         }
 #         return jsonify(d), 200
 #     else:
@@ -2166,7 +2045,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'ERROR',
 #             'msg': ldap_user_search_status[1],
-#             'STATUS_CODE': 500
+#             'ERROR_CODE': 500
 #         }
 #         return jsonify(d), 500
 
@@ -2179,7 +2058,7 @@ def get_si(host, user, password):
 #         d = {
 #             "responseType": "ERROR",
 #             "msg": "Wrong env provided " + env[0],
-#             "STATUS_CODE": 500
+#             "ERROR_CODE": 500
 #         }
 #         return jsonify(d), 500
 #     env = env[0]
@@ -2190,7 +2069,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'SUCCESS',
 #             'msg': ldap_group_search_status[1],
-#             'STATUS_CODE': 200
+#             'ERROR_CODE': 200
 #         }
 #         return jsonify(d), 200
 #     else:
@@ -2198,7 +2077,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'ERROR',
 #             'msg': ldap_group_search_status[1],
-#             'STATUS_CODE': 500
+#             'ERROR_CODE': 500
 #         }
 #         return jsonify(d), 500
 
@@ -2211,7 +2090,7 @@ def get_si(host, user, password):
 #         d = {
 #             "responseType": "ERROR",
 #             "msg": "Wrong env provided " + env[0],
-#             "STATUS_CODE": 500
+#             "ERROR_CODE": 500
 #         }
 #         return jsonify(d), 500
 #     env = env[0]
@@ -2222,7 +2101,7 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'SUCCESS',
 #             'msg': ldap_close_connection_status[1],
-#             'STATUS_CODE': 200
+#             'ERROR_CODE': 200
 #         }
 #         return jsonify(d), 200
 #     else:
@@ -2230,6 +2109,6 @@ def get_si(host, user, password):
 #         d = {
 #             'responseType': 'ERROR',
 #             'msg': ldap_close_connection_status[1],
-#             'STATUS_CODE': 500
+#             'ERROR_CODE': 500
 #         }
 #         return jsonify(d), 500

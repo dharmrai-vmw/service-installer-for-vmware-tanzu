@@ -10,7 +10,6 @@ from pydantic import BaseModel
 class Version(BaseModel):
     tkgm: str = None
     tkgs: str = None
-    env: str = "vsphere"
 
 
 class DesiredState(BaseModel):

@@ -191,7 +191,6 @@ export class InfraDataStepComponent extends StepFormDirective implements OnInit 
                         this.apiClient.proxyConfiguredVsphere = true;
                         this.loadingState = ClrLoadingState.DEFAULT;
                         this.disabledProxy = false;
-                        this.errorNotification = null;
                     } else if (data.responseType === 'ERROR') {
                         this.loadingState = ClrLoadingState.DEFAULT;
                         this.apiClient.proxyConfiguredVsphere = false;
@@ -226,7 +225,6 @@ export class InfraDataStepComponent extends StepFormDirective implements OnInit 
                         this.disableLoadingState = ClrLoadingState.DEFAULT;
                         this.apiClient.proxyConfiguredVsphere = false;
                         this.disabledProxy = true;
-                        this.errorNotification = null;
                     } else if (data.responseType === 'ERROR') {
                         this.disableLoadingState = ClrLoadingState.DEFAULT;
                         this.apiClient.proxyConfiguredVsphere = true;

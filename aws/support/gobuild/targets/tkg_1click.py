@@ -25,7 +25,7 @@ class Tkg1click(helpers.target.Target, helpers.make.MakeHelper):
        self.productname = 'sivt-aws-federal'
        self.longprodname = 'sivt-aws-federal'
        self.shortname = 'sivt-aws-federal'
-       self.prodversion = '1.4.0'
+       self.prodversion = '1.3.1'
        self.sourcerootname = 'sivt-aws-federal'
        self.sourceroot = '%(buildroot)/' + self.sourcerootname
 

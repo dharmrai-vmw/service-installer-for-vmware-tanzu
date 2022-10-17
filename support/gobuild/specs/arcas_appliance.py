@@ -59,9 +59,9 @@ VA_HARDENING_FILES = {
     'linux-centos64-64': VA_HARDENING_DELIVERABLE
 }
 
-STUDIOVA_BRANCH = 'test-vmstudio-disk-size'
-STUDIOVA_CLN = '04f28f196879dd33d393faa1f1685d45a1e7a1db'  # Studio 3.0.0.7
-STUDIOVA_BUILDTYPE = 'beta'
+STUDIOVA_BRANCH = 'master'
+STUDIOVA_CLN = 'de66b7f1ae506c01e880ad2143cd1901e83cdea2'  # Studio 3.0.0.7
+STUDIOVA_BUILDTYPE = 'release'
 STUDIOVA_URL_ENABLED = True
 STUDIOVA_DELIVERABLE = [
     r'publish/prod/exports/ova/.*.ova$',
@@ -75,23 +75,6 @@ STUDIOVA_FILES = {
     'linux-centos64-64': STUDIOVA_DELIVERABLE
 }
 
-CAYMAN_HARBOR_PRODUCT = 'cayman_harbor'
-CAYMAN_HARBOR_BRANCH = 'vmware-2.5.3'
-CAYMAN_HARBOR_CLN = '287fa737dd69f2155b1ac8d4b530dbe9a73b363c'
-CAYMAN_HARBOR_BUILDTYPE = "release"
-CAYMAN_HARBOR_URL_ENABLED = True
-CAYMAN_HARBOR_FILES = {
-    'linux': [ r'publish/.*', ],
-    'linux64': [ r'publish/.*', ],
-    'linux64-vm': [ r'publish/.*', ],
-    'linux-centos64-64': [ r'publish/.*', ]
-}
-CAYMAN_HARBOR_BUILDTYPES = {
-    'obj': 'obj',
-    'beta': 'beta',
-    'release': 'release',
-    'opt': 'beta',
-}
 
 ARCAS_BRANCH = 'master'
 ARCAS_CLN = '17dc621cdef916974e212f648fed627a41a8fce0'

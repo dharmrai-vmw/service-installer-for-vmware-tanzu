@@ -614,24 +614,10 @@ export class VSphereNsxtWizardComponent extends WizardBaseDirective implements O
             return '';
         }
     }
-
-
-    public getCustomCertsAsList(certs: string) {
-        if (certs === "" || certs.length === 0) return [];
-        let certList = certs.split(',');
-        let listOfCerts = [];
-        let iter = 0;
-        while (iter < certList.length){
-            listOfCerts.push(certList[iter].trim());
-            iter++;
-        }
-        return listOfCerts;
-    }
-
     public getPayload() {
         // console.log((this.form.get('vsphereProviderForm') as FormGroup).get('password').value);
         // console.log(document.getElementById('ssoPassword'));
-        let workloadGiven = this.apiClient.workloadClusterSettings;
+        let workloadGiven = this.apiClient.workloadClusterSettings && this.apiClient.workloadDataSettings;
         const payload = {
             'envSpec': {
                 'vcenterDetails': {
@@ -803,7 +789,6 @@ export class VSphereNsxtWizardComponent extends WizardBaseDirective implements O
                     'tkgSharedserviceServiceCidr': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'serviceCidr'),
                     'tkgSharedserviceBaseOs': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'baseImage'),
                     'tkgSharedserviceKubeVersion': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'baseImageVersion'),
-                    'tkgCustomCertsPath': this.getCustomCertsAsList(this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'tkgCustomCert')),
                     'tkgSharedserviceRbacUserRoleSpec': {
                         'clusterAdminUsers': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'clusterAdminUsers'),
                         'adminUsers': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'adminUsers'),
@@ -814,29 +799,20 @@ export class VSphereNsxtWizardComponent extends WizardBaseDirective implements O
                     'tkgSharedserviceEnableDataProtection': this.getStringBoolFieldValue('vsphereSharedServiceNodeSettingForm', 'enableDataProtection'),
                     'tkgSharedClusterCredential': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroCredential'),
                     'tkgSharedClusterBackupLocation': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroTargetLocation'),
-                    'tkgSharedClusterVeleroDataProtection': {
-                        'enableVelero': this.getStringBoolFieldValue('vsphereSharedServiceNodeSettingForm', 'enableVelero'),
-                        'username': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroUsername'),
-                        'passwordBase64': btoa(this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroPassword')),
-                        'bucketName': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroBucket'),
-                        'backupRegion': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroRegion'),
-                        'backupS3Url': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroS3Url'),
-                        'backupPublicUrl': this.getFieldValue('vsphereSharedServiceNodeSettingForm', 'veleroPublicUrl'),
-                    },
                 },
             },
-            // 'tkgMgmtDataNetwork': {
-            //     'tkgMgmtDataNetworkName': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtSegmentName'),
-            //     'tkgMgmtDataNetworkGatewayCidr': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtGatewayCidr'),
-            //     'tkgMgmtAviServiceIpStartRange': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtDhcpStartRange'),
-            //     'tkgMgmtAviServiceIpEndRange': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtDhcpEndRange'),
-            // },
-            // 'tkgWorkloadDataNetwork': {
-            //     'tkgWorkloadDataNetworkName': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataSegmentName'),
-            //     'tkgWorkloadDataNetworkGatewayCidr': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataGatewayCidr'),
-            //     'tkgWorkloadAviServiceIpStartRange': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataDhcpStartRange'),
-            //     'tkgWorkloadAviServiceIpEndRange': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataDhcpEndRange'),
-            // },
+            'tkgMgmtDataNetwork': {
+                'tkgMgmtDataNetworkName': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtSegmentName'),
+                'tkgMgmtDataNetworkGatewayCidr': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtGatewayCidr'),
+                'tkgMgmtAviServiceIpStartRange': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtDhcpStartRange'),
+                'tkgMgmtAviServiceIpEndRange': this.getFieldValue('TKGMgmtDataNWForm', 'TKGMgmtDhcpEndRange'),
+            },
+            'tkgWorkloadDataNetwork': {
+                'tkgWorkloadDataNetworkName': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataSegmentName'),
+                'tkgWorkloadDataNetworkGatewayCidr': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataGatewayCidr'),
+                'tkgWorkloadAviServiceIpStartRange': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataDhcpStartRange'),
+                'tkgWorkloadAviServiceIpEndRange': !workloadGiven ? "" : this.getFieldValue('TKGWorkloadDataNWForm', 'TKGDataDhcpEndRange'),
+            },
             'tkgWorkloadComponents': {
                 'tkgWorkloadNetworkName': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'segmentName'),
                 'tkgWorkloadGatewayCidr': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'gatewayAddress'),
@@ -868,15 +844,6 @@ export class VSphereNsxtWizardComponent extends WizardBaseDirective implements O
                 'tkgWorkloadEnableDataProtection': !workloadGiven ? "false" : this.getStringBoolFieldValue('vsphereWorkloadNodeSettingForm', 'enableDataProtection'),
                 'tkgWorkloadClusterCredential': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroCredential'),
                 'tkgWorkloadClusterBackupLocation': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroTargetLocation'),
-                'tkgWorkloadClusterVeleroDataProtection': {
-                    'enableVelero': !workloadGiven ? "false" : this.getStringBoolFieldValue('vsphereWorkloadNodeSettingForm', 'enableVelero'),
-                    'username': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroUsername'),
-                    'passwordBase64': !workloadGiven ? "" : btoa(this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroPassword')),
-                    'bucketName': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroBucket'),
-                    'backupRegion': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroRegion'),
-                    'backupS3Url': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroS3Url'),
-                    'backupPublicUrl': !workloadGiven ? "" : this.getFieldValue('vsphereWorkloadNodeSettingForm', 'veleroPublicUrl'),
-                },
             },
             'harborSpec': {
                 'enableHarborExtension': this.apiClient.sharedServicesClusterSettings.toString(),

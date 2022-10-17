@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from model.desired_state import DesiredState
 from model.spec import MasterSpec
 from model.status import State, ScaleDetail, RepaveDetail
-from model.user_credentials import UserCredentials
 
 
 class DeploymentPlatform(str, Enum):
@@ -35,7 +34,6 @@ class RunConfig(BaseModel):
     desired_state: DesiredState
     support_matrix: dict
     deployment_platform: DeploymentPlatform
-    user_cred: UserCredentials
     vmc: Optional[VmcConfig]
 
 class ScaleConfig(BaseModel):

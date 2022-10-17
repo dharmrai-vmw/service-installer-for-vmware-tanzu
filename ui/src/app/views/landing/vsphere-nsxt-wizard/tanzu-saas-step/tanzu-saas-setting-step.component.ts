@@ -255,7 +255,6 @@ export class TanzuSaasStepComponent extends StepFormDirective implements OnInit 
         this.loadingState = ClrLoadingState.LOADING;
         let refreshToken = this.formGroup.controls['refreshToken'].value;
         let instanceUrl = this.formGroup.get('tmcInstanceURL').value;
-        this.errorNotification = null;
         this.apiClient.verifyTmcRefreshToken(refreshToken).subscribe((data: any) => {
             if (data && data !== null) {
                 if (data.responseType === 'SUCCESS') {
@@ -376,7 +375,6 @@ export class TanzuSaasStepComponent extends StepFormDirective implements OnInit 
                     this.apiClient.dataProtectionTargetLocations = data.TARGET_LOCATIONS;
                     this.connected = true;
                     this.loadingState = ClrLoadingState.DEFAULT;
-                    this.errorNotification = null;
                 } else if (data.responseType === 'ERROR') {
                     this.connected = false;
                     this.loadingState = ClrLoadingState.DEFAULT;

@@ -36,7 +36,7 @@ def vmc_pre_configuration(env, file):
         else:
             print("Only vmc env type is supported for vmc configuration.")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("VMC pre configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -60,7 +60,7 @@ def vcf_pre_configuration(env, file):
         else:
             print("Only vcf env type is supported for vcf configuration.")
             sys.exit(1)
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("VCF pre configuration failed " + str(response.json()))
             sys.exit(1)
         else:
@@ -80,8 +80,8 @@ def all(env, file):
     try:
         url = "http://localhost:5000/api/tanzu/vmc/tkgm"
         response = requests.request("POST", url, headers=headers, data=open(file, 'rb'), verify=False)
-        # print(response.json()['STATUS_CODE'])
-        if response.json()['STATUS_CODE'] != 200:
+        # print(response.json()['ERROR_CODE'])
+        if response.json()['ERROR_CODE'] != 200:
             print("Tkm configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -105,7 +105,7 @@ def avi_wcp_configuration(env, file):
         else:
             print("Wrong env type, please specify vmc or vsphere")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Avi wcp configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -129,7 +129,7 @@ def enable_wcp(env, file):
         else:
             print("Wrong env type, please specify vmc or vsphere")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Enable WCP configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -156,7 +156,7 @@ def avi_configuration(env, file):
         else:
             print("Wrong env type, please specify vmc or vsphere")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Avi configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -186,7 +186,7 @@ def precheck_env(env, file):
         url = "http://localhost:5000/api/tanzu/precheck"
         response = requests.request("POST", url, headers=headers, data=open(file, 'rb'), verify=False)
 
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Precheck failed " + str(response.json()))
             safe_exit()
         else:
@@ -213,7 +213,7 @@ def managemnet_configuration(env, file):
         else:
             print("Wrong env type, please specify vmc or vsphre")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Management configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -239,7 +239,7 @@ def deployapp(env, file):
             print("Wrong env type, please specify vmc or vsphere")
             safe_exit()
         response = requests.request("POST", url, headers=headers, data=open(file, 'rb'), verify=False)
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Deploy app: " + str(response.json()))
             safe_exit()
         else:
@@ -266,7 +266,7 @@ def shared_service_configuration(env, file):
         else:
             print("Wrong env type, please specify vmc or vsphre")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Shared service configuration failed : " + str(response.json()))
             safe_exit()
         else:
@@ -292,7 +292,7 @@ def deploy_extentions(env, file):
         else:
             print("Wrong env type, please specify vmc or vsphere or vcf")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Deploy extensions failed" + str(response.json()))
             safe_exit()
         else:
@@ -301,24 +301,6 @@ def deploy_extentions(env, file):
         print("Deploy extensions failed" + str(e))
         safe_exit()
 
-
-def load_tanzu_image_to_harbor():
-    print("Load_Tanzu_Image: Load Tanzu Images to Harbor")
-    headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-    }
-    try:
-        url = "http://localhost:5000/api/tanzu/harbor"
-        response = requests.request("POST", url, headers=headers, data={}, verify=False)
-        if response.json()['STATUS_CODE'] != 200:
-            print("Load Tanzu Images to Harbor failed " + str(response.json()))
-            safe_exit()
-        else:
-            print("Load_Tanzu_Image: Load Tanzu Images to Harbor Successfully")
-    except Exception as e:
-        print("Load Tanzu Images to Harbor failed " + str(e))
-        safe_exit()
 
 def session(env, file):
     print("Session: Capturing Environment Details")
@@ -336,8 +318,8 @@ def session(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        # print(response.json()['STATUS_CODE'])
-        if response.json()['STATUS_CODE'] != 200:
+        # print(response.json()['ERROR_CODE'])
+        if response.json()['ERROR_CODE'] != 200:
             print("Failed to get session" + str(response.json()))
             safe_exit()
         else:
@@ -364,7 +346,7 @@ def workload_deploy(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Workload deploy failed " + str(response.json()))
             safe_exit()
         else:
@@ -391,7 +373,7 @@ def workload_preconfig(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Workload pre configuration failed " + str(response.json()))
             safe_exit()
         else:
@@ -415,7 +397,7 @@ def create_supervisor_namespace(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Supervisor name space creation failed " + str(response.json()))
             safe_exit()
         else:
@@ -439,7 +421,7 @@ def create_workload_cluster(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Create workload cluster failed " + str(response.json()))
             safe_exit()
         else:
@@ -477,7 +459,7 @@ def userPrompt_for_wcp_shutdown(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("WCP shutdown failed: " + str(response.json()))
             safe_exit()
     except Exception as e:
@@ -500,7 +482,7 @@ def userPrompt_for_wcp_bringup(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("WCP shutdown failed: " + str(response.json()))
             safe_exit()
     except Exception as e:
@@ -521,7 +503,7 @@ def userPrompt_for_cleanup(env, file):
         else:
             print("Un recognised env " + env + "provided")
             safe_exit()
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Cleanup failed: " + str(response.json()))
             safe_exit()
         workload_clusters = response.json()["WORKLOAD_CLUSTERS"]
@@ -551,7 +533,7 @@ def userPrompt_for_cleanup(env, file):
             safe_exit()
 
         msg = """\n\n
-Below resources from environment will be Cleaned-up.
+Below resources from environment will be Cleaned-up. 
         """
 
         if management_clusters:
@@ -600,7 +582,7 @@ Please confirm if you wish to continue with cleanup (Y/N) ? : """
         headers.update({"Retain": str(retain)})
         url = "http://localhost:5000/api/tanzu/cleanup-env"
         response = requests.request("POST", url, headers=headers, data=open(file, 'rb'), verify=False)
-        if response.json()['STATUS_CODE'] != 200:
+        if response.json()['ERROR_CODE'] != 200:
             print("Cleanup failed " + str(response.json()))
             safe_exit()
         else:
@@ -682,13 +664,8 @@ def usage():
     enable_wcp = "Enable WCP:"
     tkgs_ns_wrk = "Create Namespace and Workload Cluster: "
     verbose = "--verbose"
-    load_harbor = "--load_tanzu_image_to_harbor"
-    load_harbor_text = "Load tanzu image to harbor"
     verbose_text = "Log Verbosity"
     cleanup_flag = "--cleanup"
-    precheck_skip = "--skip_precheck"
-    precheck_skip_text = "Skip preflight checks for the environment. Recommended only for test purpose."
-
     print("Usage:")
     print(f"{vds.rjust(20)}")
     print(
@@ -754,9 +731,7 @@ def usage():
     print(f"{deploy_extention.rjust(26)}"f"{deployApp_text.rjust(32)}")
     print(f"{help_.rjust(13)}"f"{help_text.rjust(42)}")
     print(f"{version.rjust(16)}"f"{version_text.rjust(44)}")
-    print(f"{precheck_skip.rjust(22)}"f"{precheck_skip_text.rjust(96)}")
     print(f"{verbose.rjust(16)}"f"{verbose_text.rjust(38)}")
-    print(f"{load_harbor.rjust(35)}"f"{load_harbor_text.rjust(32)}")
 
 
 def main():
@@ -765,23 +740,12 @@ def main():
     try:
         opts, args = getopt.getopt(argv, 'hvave:',
                                    ["help", "version", "env=", "file=",
-                                    "vmc_pre_configuration", "vcf_pre_configuration", "avi_configuration",
-                                    "shared_service_configuration","load_tanzu_image_to_harbor",
+                                    "vmc_pre_configuration","vcf_pre_configuration", "avi_configuration", "shared_service_configuration",
 
                                     "workload_preconfig", "workload_deploy", "deployapp", "tkg_mgmt_configuration",
                                     "all", "session", "precheck", "deploy_extensions", "avi_wcp_configuration",
                                     "enable_wcp", "create_supervisor_namespace", "create_workload_cluster", "verbose",
-                                    "cleanup", "wcp_shutdown", "wcp_bringup", "skip_precheck"])
-
-        for opt, arg in opts:
-            if opt in ("-vv", "--verbose"):
-                t1 = threading.Thread(target=add_verbosity, name='t1')
-                t1.start()
-                break
-        for opt, arg in opts:
-            if opt in ("-j", "--load_tanzu_image_to_harbor"):
-                load_tanzu_image_to_harbor()
-                safe_exit()
+                                    "cleanup", "wcp_shutdown", "wcp_bringup"])
         li = []
         for opt, arg in opts:
             li.append(opt)
@@ -828,6 +792,11 @@ def main():
         print(file + " is not a valid json file")
         sys.exit()
     for opt, arg in opts:
+        if opt in ("-vv", "--verbose"):
+            t1 = threading.Thread(target=add_verbosity, name='t1')
+            t1.start()
+            break
+    for opt, arg in opts:
         if opt in ("-r", "--cleanup"):
             userPrompt_for_cleanup(env, file)
             safe_exit()
@@ -841,17 +810,7 @@ def main():
         if opt in ("-wb", "--wcp_bringup"):
             userPrompt_for_wcp_bringup(env, file)
             safe_exit()
-
-    skip = False
-    for opt, arg in opts:
-        if opt in ("-sp", "--skip_precheck"):
-            skip = True
-
-    with open("/tmp/skipPrecheck.txt", 'w') as fi:
-        fi.write(str(skip))
-
     precheck_env(env, file)
-
     for opt, arg in opts:
         if opt in ("-c", "--vcf_pre_configuration"):
             vcf_pre_configuration(env, file)

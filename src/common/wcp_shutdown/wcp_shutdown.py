@@ -34,7 +34,7 @@ def wcp_bringup():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -47,7 +47,7 @@ def wcp_bringup():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong environment provided for cleanup",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -69,7 +69,7 @@ def wcp_bringup():
                 d = {
                     "responseType": "ERROR",
                     "msg": "ERROR: Failed to retrieve Service Instance from the provided vCenter details",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             vc_service_instance = vc_service_instance[0]
@@ -82,7 +82,7 @@ def wcp_bringup():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Caught vmodl fault",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -100,7 +100,7 @@ def wcp_bringup():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Session creation is failed, please check vcenter connection",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         token = json.loads(vcsession.text)["value"]
@@ -112,7 +112,7 @@ def wcp_bringup():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Unable to restart WCP Service",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Successfully Restarted WCP services")
@@ -130,7 +130,7 @@ def wcp_bringup():
                     d = {
                         "responseType": "ERROR",
                         "msg": "ERROR: Could NOT find cluster with name: " + vCenter_cluster,
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
         timer = 0
@@ -152,7 +152,7 @@ def wcp_bringup():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Failed to fetch WCP endpoint for Supervisor Cluster after restart",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -166,7 +166,7 @@ def wcp_bringup():
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully restarted WCP services, WCP endpoint: " + wcp_endpoint + " is reachable",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
@@ -174,7 +174,7 @@ def wcp_bringup():
         d = {
             "responseType": "ERROR",
             "msg": "ERORR: This action can only be performed on a vsphere environment",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
@@ -188,7 +188,7 @@ def wcp_shutdown():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -201,7 +201,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong environment provided for cleanup",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -227,7 +227,7 @@ def wcp_shutdown():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to retrieve Service Instance from the provided vCenter details",
-                    "STATUS_CODE": 500
+                    "ERROR_CODE": 500
                 }
                 return jsonify(d), 500
             vc_service_instance = vc_service_instance[0]
@@ -246,7 +246,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Caught vmodl fault",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -264,7 +264,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Session creation is failed, please check vcenter connection",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         token = json.loads(vcsession.text)["value"]
@@ -283,7 +283,7 @@ def wcp_shutdown():
                     d = {
                         "responseType": "ERROR",
                         "msg": "ERROR: Could NOT find cluster with name: " + vCenter_cluster,
-                        "STATUS_CODE": 500
+                        "ERROR_CODE": 500
                     }
                     return jsonify(d), 500
 
@@ -297,7 +297,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Failed while fetching WCP endpoint",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
         wcp_endpoint = wcp_endpoint[0]
@@ -315,7 +315,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Could not login to WCP SC Endpoint",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -334,7 +334,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Could not login to WCP SC Endpoint",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -362,7 +362,7 @@ def wcp_shutdown():
             d = {
                 "responseType": "ERROR",
                 "msg": "ERROR: Unable to stop WCP Service",
-                "STATUS_CODE": 500
+                "ERROR_CODE": 500
             }
             return jsonify(d), 500
 
@@ -389,7 +389,7 @@ def wcp_shutdown():
                             d = {
                                 "responseType": "ERROR",
                                 "msg": "ERROR: Failed to shutdown the SC VMs",
-                                "STATUS_CODE": 500
+                                "ERROR_CODE": 500
                             }
                             return jsonify(d), 500
                         break
@@ -425,7 +425,7 @@ def wcp_shutdown():
                         d = {
                             "responseType": "ERROR",
                             "msg": "ERROR: Failed to shutdown the SC VMs",
-                            "STATUS_CODE": 500
+                            "ERROR_CODE": 500
                         }
                         return jsonify(d), 500
                     break
@@ -438,7 +438,7 @@ def wcp_shutdown():
         #     d = {
         #         "responseType": "ERROR",
         #         "msg": "ERROR: Caught error trying to shutdown VM",
-        #         "STATUS_CODE": 500
+        #         "ERROR_CODE": 500
         #     }
         #     return jsonify(d), 500
 
@@ -450,7 +450,7 @@ def wcp_shutdown():
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully shutdown WCP",
-            "STATUS_CODE": 200
+            "ERROR_CODE": 200
         }
         return jsonify(d), 200
     else:
@@ -458,7 +458,7 @@ def wcp_shutdown():
         d = {
             "responseType": "ERROR",
             "msg": "ERORR: This action can only be performed on a vsphere environment",
-            "STATUS_CODE": 500
+            "ERROR_CODE": 500
         }
         return jsonify(d), 500
 
