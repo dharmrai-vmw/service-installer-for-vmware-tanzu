@@ -107,3 +107,5 @@ KUBECONFIG
 atleast
 truststore
 OVHcloud
+precheck
+pingable

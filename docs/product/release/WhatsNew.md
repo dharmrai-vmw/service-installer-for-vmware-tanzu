@@ -34,7 +34,7 @@
 - Service Installer fails to deploy workload cluster with TMC integration on proxy configured environments.
 - For Tanzu on VMware DVS deployments using TMC, control plane nodes were getting configured with worker node VM class.
 - Standard package repository installation fails on Tanzu on VMware DVS configured with proxy-based deployments.
-- Validated Key Cloak as an OICD provider for Pinniped configuration on Tanzu Kubernetes Grid clusters.
+- Validated Keycloak as an OIDC provider for Pinniped configuration on Tanzu Kubernetes Grid clusters.
 
 ## Known Issues
 
