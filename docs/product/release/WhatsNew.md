@@ -8,29 +8,33 @@
 - Swagger integration with Service Installer so users can access all the workflow APIs here: `http://<SIVT_IP>:5000/swagger`
 - Standalone Velero can be deployed using Service Installer for backup and restore tasks. This does not require TMC integration.
 - Custom certificates for Tanzu Kubernetes Grid can now be imported through Service Installer.
-- Support for proxy-based deployments on Tanzu with VMware VDS environments. 
+- Support for proxy-based deployments on Tanzu with VMware VDS environments.
 - Support for providing configured subscribed content library for Tanzu on VMware deployments through Service Installer UI.
-- Harbor enhancements: 
-   - Removed dependency on DHCP for Service Installer build with Harbor. DHCP is no longer a mandatory requirement.
-- Tekton enhancements: 
-   - Support for vSphere with NSX-T based deployments.
-   - Support for Tekton Service Installer Docker image creation
-   - Support for re-entrant and resiliency of Tekton pipeline
+- Harbor enhancements:
+  
+  - Removed dependency on DHCP for Service Installer build with Harbor. DHCP is no longer a mandatory requirement.
+
+- Tekton enhancements:
+
+  - Support for vSphere with NSX-T based deployments.
+  - Support for Tekton Service Installer Docker image creation
+  - Support for re-entrant and resiliency of Tekton pipeline
+
 - Precheck enhancements:
-   - Check and filter out storage policies with encryption as those policies are not valid for deploying Tanzu on VMware DVS.
-   - Check if all the default gateways are pingable or not.
-   - Check for MTU size
-   - Check for HA and DRS activation status on vCenter.
+
+  - Check and filter out storage policies with encryption as those policies are not valid for deploying Tanzu on VMware DVS.
+  - Check if all the default gateways are pingable or not.
+  - Check for MTU size
+  - Check for HA and DRS activation status on vCenter.
 
 ## Resolved Issues
 
-- Service Installer by default goes into non-orchestrated workflow for build with harbor integrated.
+- Service Installer by default goes into non-orchestrated workflow for build with Harbor integrated.
 - Service Installer UI is unable to update proxy details on Tanzu with VMware deployments.
 - Service Installer fails to deploy workload cluster with TMC integration on proxy configured environments.
 - For Tanzu on VMware DVS deployments using TMC, control plane nodes were getting configured with worker node VM class.
 - Standard package repository installation fails on Tanzu on VMware DVS configured with proxy-based deployments.
 - Validated Key Cloak as an OICD provider for Pinniped configuration on Tanzu Kubernetes Grid clusters.
-
 
 ## Known Issues
 
