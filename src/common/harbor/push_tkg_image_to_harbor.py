@@ -78,24 +78,25 @@ def harbor_push():
                 }
                 return jsonify(d), 200
 
-            # tar_path = "/opt/vmware/arcas/tools/tanzu_154.tar"
-            # if os.path.exists(tar_path):
-            #     current_app.logger.info("Extracting tanzu image tar package, usually it takes 15-20 min")
-            #     os.system("cp " + tar_path + " .")
-            # else:
-            #     response_body = {
-            #         "responseType": "ERROR",
-            #         "msg": "Tanzu image package is not present",
-            #         "ERROR_CODE": 500
-            #     }
-            #     return jsonify(response_body), 500
-            # if not os.path.exists("./tanzu"):
-            #     os.system("tar -xvf ./tanzu_154.tar")
+            tar_path = "/opt/vmware/arcas/tools/tanzu_16.tar"
+            if os.path.exists(tar_path):
+                current_app.logger.info("Extracting tanzu image tar package, usually it takes 15-20 min")
+                os.system("rm -rf tanzu_16.tar")
+                os.system("cp " + tar_path + " .")
+            else:
+                response_body = {
+                    "responseType": "ERROR",
+                    "msg": "Tanzu image package is not present at location /opt/vmware/arcas/tools/, to continue place tanzu_16.tar file at /opt/vmware/arcas/tools/",
+                    "ERROR_CODE": 500
+                 }
+                return jsonify(response_body), 500
+            if not os.path.exists("./tanzu"):
+                 os.system("tar -xvf ./tanzu_16.tar")
             down_path = "/opt/vmware/arcas/tools/download.sh"
             list_path = "/opt/vmware/arcas/tools/image-list-fromtar"
             search_text = "repo_harbor_with_port"
             replace_text = base
-            tanzu_extract = "/opt/vmware/arcas/tools/tanzu/"
+            tanzu_extract = "./tanzu/tanzu_temp"
             with open(list_path, 'r') as file:
                 data = file.read()
                 data = data.replace(search_text, replace_text)
@@ -115,7 +116,7 @@ def harbor_push():
             repo_cert = Path(file_path).read_text()
             base64_bytes = base64.b64encode(repo_cert.encode("utf-8"))
             root_ca_data_base64 = str(base64_bytes, "utf-8")
-            push = ["sh", f"{tanzu_extract}/gen.sh", root_ca_data_base64]
+            push = ["sh", tanzu_extract+"/gen.sh", root_ca_data_base64]
             push_harbor = runShellCommandAndReturnOutputAsList(push)
             if push_harbor[1] != 0:
                 response_body = {
