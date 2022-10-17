@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: git-bot
-secrets:
-  - name: git-user-pass

@@ -1,8 +1,0 @@
-{
-  "datastore": "ssd01",
-  "folder": "Builder",
-  "cluster": "Cluster",
-  "network": "VM Network",
-  "insecure_connection": "true",
-  "goss_download_path": "/home/ubuntu/goss-VERSION-linux-ARCH"
-}

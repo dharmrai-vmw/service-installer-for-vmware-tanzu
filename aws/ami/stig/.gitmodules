@@ -1,4 +1,0 @@
-[submodule "roles/canonical-ubuntu-18.04-lts-stig-hardening"]
-	path = roles/canonical-ubuntu-18.04-lts-stig-hardening
-	url = git@gitlab.eng.vmware.com:core-build/canonical-ubuntu-18.04-lts-stig-hardening.git
-	branch = master
