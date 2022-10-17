@@ -18,7 +18,7 @@ from common.common_utilities import preChecks, createResourceFolderAndWait, depl
     envCheck, manage_avi_certificates, validateNetworkAvailable
 from common.common_utilities import form_avi_ha_cluster, isAviHaEnabled, preChecks, createResourceFolderAndWait, \
     deployAndConfigureAvi, \
-    envCheck, validateNetworkAvailable, downloadAviController
+    envCheck, validateNetworkAvailable, downloadAviController, ping_check_gateways
 import os
 from common.replace_value import replaceValue
 
@@ -36,7 +36,7 @@ def configure_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy avi " + str(avi_dep[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     avi_cert = manage_alb_certs()
@@ -45,13 +45,13 @@ def configure_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to manage avi cert " + str(avi_cert[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Avi configured Successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Avi configured Successfully ")
     return jsonify(d), 200
@@ -65,7 +65,7 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     password = current_app.config['VC_PASSWORD']
@@ -81,10 +81,22 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
+
+    current_app.logger.info("Performing ping checks for default gateways...")
+    if not ping_check_gateways(env):
+        d = {
+            "responseType": "ERROR",
+            "msg": "Ping test failed for default gateways",
+            "STATUS_CODE": 500
+        }
+        return jsonify(d), 500
+    else:
+        current_app.logger.info("Ping check passed for gateways")
+
     refreshToken = request.get_json(force=True)['marketplaceSpec']['refreshToken']
     if refreshToken:
         download_status = downloadAviController(env)
@@ -93,7 +105,7 @@ def deploy_alb():
             d = {
                 "responseType": "ERROR",
                 "msg": download_status[0],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -113,7 +125,7 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(create[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     rp_pool = rp_pool.replace(' ', "#remove_me#")
@@ -123,7 +135,7 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to find the network " + SegmentsName.DISPLAY_NAME_AVI_MANAGEMENT,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     control_plan = request.get_json(force=True)['componentSpec']['tkgMgmtSpec']['tkgMgmtDeploymentType']
@@ -140,7 +152,7 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Currently only dev plan is supported for NSX ALB controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -149,7 +161,7 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -163,7 +175,7 @@ def deploy_alb():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy and configure avi  " + str(dep[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if isAviHaEnabled(env):
@@ -176,7 +188,7 @@ def deploy_alb():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to deploy and configure avi  " + str(dep[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         dep = deployAndConfigureAvi(govc_client=govc_client, vm_name=ControllerLocation.CONTROLLER_NAME3,
@@ -188,7 +200,7 @@ def deploy_alb():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to deploy and configure 3rd avi  " + str(dep[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         ip = govc_client.get_vm_ip(ControllerLocation.CONTROLLER_NAME, datacenter_name=data_center)[0]
@@ -197,7 +209,7 @@ def deploy_alb():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get ip of avi controller",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         res, status = form_avi_ha_cluster(ip, env, govc_client, avi_version)
@@ -206,13 +218,13 @@ def deploy_alb():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to form avi ha cluster " + str(status),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully deployed and configured avi",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -225,7 +237,7 @@ def manage_alb_certs():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     data_center = current_app.config['VC_DATACENTER']
@@ -236,7 +248,7 @@ def manage_alb_certs():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -245,7 +257,7 @@ def manage_alb_certs():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -256,7 +268,7 @@ def manage_alb_certs():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to manage-certificate " + cert[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     is_gen = cert[2]
@@ -265,7 +277,7 @@ def manage_alb_certs():
         d = {
             "responseType": "SUCCESS",
             "msg": "Generated and replaced the certificate successfully",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
     else:
@@ -273,7 +285,7 @@ def manage_alb_certs():
         d = {
             "responseType": "SUCCESS",
             "msg": "Certificate is already generated",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
 

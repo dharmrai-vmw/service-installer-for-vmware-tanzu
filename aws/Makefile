@@ -191,6 +191,12 @@ create-non-airgapped-multi-vpc-infra:  ## Create Multiple VPC setup and subnets
 	chmod +x terraform-non-air-gapped-vpc/setup-vpc.sh
 	terraform-non-air-gapped-vpc/setup-vpc.sh;
 
+.PHONY: create-airgapped-multi-vpc-infra
+create-airgapped-multi-vpc-infra:  ## Create Airgapped VPC setup and subnets and VPC endpoints
+	echo "Starting VPC creation for airgapped deployment"
+	chmod +x terraform-airgapped-vpc/setup-vpc.sh
+	terraform-airgapped-vpc/setup-vpc.sh;
+
 .PHONY: fetch-aws-infra-id
 fetch-aws-infra-id:  ## fetch subnet, vpc id's needed for multiple VPC deployments
 	echo "Fetching infra setup non-airgapped deployment"
@@ -199,6 +205,14 @@ fetch-aws-infra-id:  ## fetch subnet, vpc id's needed for multiple VPC deploymen
 .PHONY: destroy-multi-vpc-infra
 destroy-multi-vpc-infra: ## Delete multiple vpc non-airgapped via terraform
 	pushd terraform-non-air-gapped-vpc; \
+		pwd; \
+		terraform apply -destroy -auto-approve; \
+	popd;
+
+
+.PHONY: destroy-airgapped-vpc-infra
+destroy-airgapped-vpc-infra: ## Delete airgapped vpc via terraform
+	pushd terraform-airgapped-vpc; \
 		pwd; \
 		terraform apply -destroy -auto-approve; \
 	popd;

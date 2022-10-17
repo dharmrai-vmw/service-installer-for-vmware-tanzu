@@ -126,6 +126,47 @@
     <h3 i18n="cluster settings" aria-level="2">
         NSX ALB Component Setting
     </h3>
+    <h5 i18n="cluster settings" aria-level="2">
+        Configure Orchestrator or Non-orchestrator deployment mode
+    </h5>
+    <div class="clr-row">
+        <div class="clr-col-6 clr-form-horizontal">
+            <clr-select-container [attr.data-step-metadata]="formName">
+                <label i18n="modeOfDeployment label">
+                    MODE OF DEPLOYMENT
+                    <clr-tooltip>
+                        <clr-icon aria-live="assertive" a11yTooltipTrigger shape="info-circle" size="22"></clr-icon>
+                        <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
+                            <span>
+                                Configure vCenter in orchestrator mode or Non-orchestrator mode.
+                            </span>
+                        </clr-tooltip-content>
+                    </clr-tooltip>
+                </label>
+                <select clrSelect name="modeOfDeployment" formControlName="modeOfDeployment">
+                    <ng-container *ngFor="let mode of ModesOfDeployment">
+                        <option [value]="mode">
+                            {{mode}}
+                        </option>
+                    </ng-container>
+                </select>
+                <!-- Add a empty helper to avoid accessiblity aria-describeby issue -->
+                <clr-control-helper></clr-control-helper>
+            </clr-select-container>
+        </div>
+    </div>
+    <div *ngIf="this.formGroup.get('modeOfDeployment').value==='non-orchestrated'" class="alert alert-info" role="alert">
+        <div class="alert-items">
+            <div class="alert-item static">
+                <div class="alert-icon-wrapper">
+                    <clr-icon class="alert-icon" shape="info-circle"></clr-icon>
+                </div>
+                <span class="alert-text" i18n="vsphere wizard step info notification">
+                    Please make sure to enable DHCP in TKG management, TKG workload, AVI management, TKG cluster vip, TKG management data, and TKG workload data networks.
+                </span>
+            </div>
+        </div>
+    </div>
 
     <h5 i18n="cluster settings" aria-level="2">
         NSX Advanced Load Balancer Size Configuration

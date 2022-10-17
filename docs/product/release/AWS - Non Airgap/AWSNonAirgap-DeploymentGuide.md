@@ -107,7 +107,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     workload_vpc_id = <Workload VPC ID>
    ```
    **Example:**
- 
+
     ```sh
     cat ~/sivt-aws-federal/terraform/terraform.tfvars
 
@@ -163,8 +163,8 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     ```sh
     export AWS_SESSION_TOKEN=<AWS session token>
     ```
-1. Specify the deployment type. 
-   
+1. Specify the deployment type.
+
    **Compliant deployment:** By default, Service Installer for VMware Tanzu deploys FIPS compliant Tanzu Kubernetes Grid control plane node and worker nodes. In this type of deployment, Service Installer for VMware Tanzu makes use of FIPS compliant and STIG hardened Ubuntu (18.04) base OS for Tanzu Kubernetes Grid cluster nodes, FIPS enabled Kubernetes overlay, and FIPS compliant Tanzu Kubernetes Grid images. To perform compliant deployment, perform following steps:
     - For doing FIPS compliance deployment on Ubuntu, the installer needs Ubuntu advantage username and password. Export these using the following commands:
       ```
@@ -188,7 +188,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     HARBOR_PASSWORD="harbor123"
     ```
   
-2. Use the following commands if you want to overwrite these values.
+1. Use the following commands if you want to overwrite these values.
     ```sh
     export TF_VAR_harbor_host_name=<Hostname for Harbor>
     export TF_VAR_prometheus_host_name=<Hostname for Prometheus>
@@ -196,7 +196,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     export TF_VAR_harbor_extension_password=<Password for Harbor>
     ```
 
-3. Install Tanzu Kubernetes Grid extensions.
+1. Install Tanzu Kubernetes Grid extensions.
     
     By default, the script installs cert_manager and Contour as part of the default installation. For installing other extensions, set the following variables to `true`.
 
@@ -210,10 +210,10 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
     The installer resolves the prerequisites for extension deployments. For example: Grafana needs cert-manager, Contour, and Prometheus. The scripts install cert-manager, Contour, and Prometheus before Grafana installation if `GRAFANA_DEPLOYMENT` is set to `true`.
 
     **Known Issues with Extensions:**
-    - Prometheus deployment fails if SaaS is enabled.
-    - Harbor deployment fails both with and without SaaS in multi workload cluster configurations.
+    1. Prometheus deployment fails if SaaS is enabled.
+    2. Harbor deployment fails both with and without SaaS in multi workload cluster configurations.
 
-4. Enable Pinniped on management and workload clusters.
+1. Enable Pinniped on management and workload clusters.
     
     By default, Pinniped is set to false. For enabling Pinniped on management and workload clusters, set the following variables:
 
@@ -242,7 +242,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
 
     For more information on these variables, see [Tanzu CLI Configuration File Variable Reference](https://docs.vmware.com/en/VMware-Tanzu-Kubernetes-Grid/1.5/vmware-tanzu-kubernetes-grid-15/GUID-tanzu-config-reference.html).
 
-5. Configure integration with SaaS offerings.
+1. Configure integration with SaaS offerings.
     - To register management and workload clusters to Tanzu Mission Control (TMC), provide TMC refresh token by running the following command.
       ```sh
       export TMC_API_TOKEN=<TMC API token>
@@ -264,7 +264,7 @@ These prerequisites are applicable only if you use manually pre-created VPC for 
       ```
       **Note:** Tanzu Service Mesh integration requires worker node to have atleast 4 CPUs. If you specify `SKIP_TSM=false`, the installer deploys worker node with instance type `m5.xlarge`.
 
-6. Install Tanzu Kubernetes Grid.
+1. Install Tanzu Kubernetes Grid.
     
     **Note:** 
     1. Once you extract the TAR file downloaded as part of [Prerequisites](#prerequisites), make sure that you are in `<your_directory>/deployment_binaries/sivt-aws-federal/` folder while running `make` commands.
@@ -403,13 +403,13 @@ For a description of all variables, see the [Variables](#variables) section.
 
 ## <a id=clean-up-the-deployment> </a> Clean Up the Deployment
 
-  - To delete the Tanzu Kubernetes Grid cluster, run the following command on the bootstrap node.
+- To delete the Tanzu Kubernetes Grid cluster, run the following command on the bootstrap node.
 
-    ```sh
-    sudo su
-    cd non-airgapped
-    ./delete-non-airgapped.sh
-    ```
+  ```sh
+  sudo su
+  cd non-airgapped
+  ./delete-non-airgapped.sh
+  ```
 
   - To delete the Tanzu Kubernetes Grid bootstrap node, run the following command.
   

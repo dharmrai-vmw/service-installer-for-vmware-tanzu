@@ -59,7 +59,7 @@ export class NodeSettingStepComponent extends StepFormDirective implements OnIni
     private mgmtDnsServer;
     private mgmtSearchDomain;
     private mgmtNtpServer;
-
+    private mgmtContentLib;
     public pingTest = false;
 
     constructor(private validationService: ValidationService,
@@ -84,6 +84,9 @@ export class NodeSettingStepComponent extends StepFormDirective implements OnIni
                 this.validationService.noWhitespaceOnEnds()
             ])
         );
+        this.formGroup.addControl(
+            'contentLib',
+            new FormControl('', []));
         this.formGroup.addControl(
             'startAddress',
             new FormControl('', [
@@ -131,6 +134,8 @@ export class NodeSettingStepComponent extends StepFormDirective implements OnIni
             this.resurrectField('segmentName',
                 [Validators.required],
                 this.formGroup.get('segmentName').value);
+            this.resurrectField('contentLib', [], 
+                this.formGroup.get('contentLib').value);
             this.resurrectField('gatewayAddress',
                 [Validators.required, this.validationService.isValidIpNetworkSegment(),
                 this.validationService.noWhitespaceOnEnds()],
@@ -166,6 +171,11 @@ export class NodeSettingStepComponent extends StepFormDirective implements OnIni
                 } else {
                     this.formGroup.get('segmentName').setValue(this.mgmtSegment);
                     this.apiClient.mgmtSegmentError = false;
+                }
+                this.subscription = this.dataService.currentSubsContentLib.subscribe(
+                    (lib) => this.mgmtContentLib = lib);
+                if (this.apiClient.contentLibs.indexOf(this.mgmtContentLib) !== -1) {
+                    this.formGroup.get('contentLib').setValue(this.mgmtContentLib);
                 }
                 this.subscription = this.dataService.currentMgmtGateway.subscribe(
                     (mgmtGateway) => this.mgmtGateway = mgmtGateway);
@@ -242,6 +252,7 @@ export class NodeSettingStepComponent extends StepFormDirective implements OnIni
         this.dataService.currentDatacenter.subscribe(
             (datacenter) => vCenterData['datacenter'] = datacenter);
         vCenterData['startIp'] = this.formGroup.get('startAddress').value;
+        this.errorNotification = null;
         this.apiClient.pingTestSupervisor(vCenterData).subscribe((data: any) => {
             if (data && data !== null) {
                 if (data.responseType === 'SUCCESS') {

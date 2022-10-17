@@ -148,7 +148,7 @@ export class TanzuSaasStepComponent extends StepFormDirective implements OnInit 
             if (data && data !== null) {
                 if (data.responseType === 'SUCCESS') {
                     this.apiClient.tmcMgmtCluster = data.NAMESPACES_LIST;
-                    this.errorNotification = '';
+                    this.errorNotification = null;
                     if(this.uploadStatus){
                         this.subscription = this.dataService.currentSupervisorClusterName.subscribe(
                             (clusterName) => this.supervisorClusterName = clusterName);
@@ -375,7 +375,7 @@ export class TanzuSaasStepComponent extends StepFormDirective implements OnInit 
         this.apiClient.validateSupervisorCluster(clusterName).subscribe((data: any) => {
             if (data && data !== null) {
                 if (data.responseType === 'SUCCESS') {
-                    this.errorNotification = '';
+                    this.errorNotification = null;
                     this.tmcClusterValid = true;
                 } else if (data.responseType === 'ERROR') {
                     this.errorNotification = 'TMC Supervisor Cluster: ' + data.msg;

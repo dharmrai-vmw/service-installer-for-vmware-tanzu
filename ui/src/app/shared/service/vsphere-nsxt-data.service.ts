@@ -173,6 +173,8 @@ export  class VsphereNsxtDataService {
     private sharedProxyCert = new BehaviorSubject('');
     private sharedClusterCidr = new BehaviorSubject('100.96.0.0/11');
     private sharedServiceCidr = new BehaviorSubject('100.64.0.0/13');
+    private tkgCustomCert = new BehaviorSubject(new Array<string>());
+
     private enableHarbor = new BehaviorSubject<boolean>(false);
     private harborFqdn = new BehaviorSubject('');
     private harborPassword = new BehaviorSubject('');
@@ -187,7 +189,15 @@ export  class VsphereNsxtDataService {
     private sharedAdminUsers = new BehaviorSubject('');
     private sharedEditUsers = new BehaviorSubject('');
     private sharedViewUsers = new BehaviorSubject('');
-    // VELERO fields
+    // Offline Velero Fields
+    private sharedEnableVelero = new BehaviorSubject<boolean>(false);
+    private sharedVeleroBucketName = new BehaviorSubject('');
+    private sharedVeleroUsername = new BehaviorSubject('');
+    private sharedVeleroPassword = new BehaviorSubject('');
+    private sharedVeleroRegion = new BehaviorSubject('');
+    private sharedVeleroS3Url = new BehaviorSubject('');
+    private sharedVeleroPublicUrl = new BehaviorSubject('');
+    // VELERO via TMC fields
     private sharedEnableDataProtection = new BehaviorSubject<boolean>(false);
     private sharedClusterGroupName = new BehaviorSubject('');
     private sharedDataProtectionCreds = new BehaviorSubject('');
@@ -259,7 +269,15 @@ export  class VsphereNsxtDataService {
     private wrkAdminUsers = new BehaviorSubject('');
     private wrkEditUsers = new BehaviorSubject('');
     private wrkViewUsers = new BehaviorSubject('');
-    // VELERO fields
+    // Offline Velero Fields
+    private wrkEnableVelero = new BehaviorSubject<boolean>(false);
+    private wrkVeleroBucketName = new BehaviorSubject('');
+    private wrkVeleroUsername = new BehaviorSubject('');
+    private wrkVeleroPassword = new BehaviorSubject('');
+    private wrkVeleroRegion = new BehaviorSubject('');
+    private wrkVeleroS3Url = new BehaviorSubject('');
+    private wrkVeleroPublicUrl = new BehaviorSubject('');
+    // VELERO via TMC fields
     private wrkEnableDataProtection = new BehaviorSubject<boolean>(false);
     private wrkClusterGroupName = new BehaviorSubject('');
     private wrkDataProtectionCreds = new BehaviorSubject('');
@@ -432,6 +450,7 @@ export  class VsphereNsxtDataService {
     currentSharedServiceCidr = this.sharedServiceCidr.asObservable();
     currentSharedBaseImage = this.sharedBaseImage.asObservable();
     currentSharedBaseImageVersion = this.sharedBaseImageVersion.asObservable();
+    currentTkgCustomCert = this.tkgCustomCert.asObservable();
     currentEnableHarbor = this.enableHarbor.asObservable();
     currentHarborFqdn = this.harborFqdn.asObservable();
     currentHarborPassword = this.harborPassword.asObservable();
@@ -444,11 +463,19 @@ export  class VsphereNsxtDataService {
     currentSharedAdminUsers = this.sharedAdminUsers.asObservable();
     currentSharedEditUsers = this.sharedEditUsers.asObservable();
     currentSharedViewUsers = this.sharedViewUsers.asObservable();
-    // VELERO FIELDS
+    // VELERO via TMC FIELDS
     currentSharedClusterGroupName = this.sharedClusterGroupName.asObservable();
     currentSharedEnableDataProtection = this.sharedEnableDataProtection.asObservable();
     currentSharedDataProtectionCreds = this.sharedDataProtectionCreds.asObservable();
     currentSharedDataProtectionTargetLocation = this.sharedDataProtectionTargetLocation.asObservable();
+    // Offline Velero Fields
+    currentSharedEnableVelero = this.sharedEnableVelero.asObservable();
+    currentSharedVeleroBucketName = this.sharedVeleroBucketName.asObservable();
+    currentSharedVeleroUsername = this.sharedVeleroUsername.asObservable();
+    currentSharedVeleroPassword = this.sharedVeleroPassword.asObservable();
+    currentSharedVeleroRegion = this.sharedVeleroRegion.asObservable();
+    currentSharedVeleroS3Url = this.sharedVeleroS3Url.asObservable();
+    currentSharedVeleroPublicUrl = this.sharedVeleroPublicUrl.asObservable();
     // Extension
     currentEnableTanzuExtension = this.enableTanzuExtension.asObservable();
     currentTkgClusters = this.tkgClusters.asObservable();
@@ -516,11 +543,19 @@ export  class VsphereNsxtDataService {
     currentWrkAdminUsers = this.wrkAdminUsers.asObservable();
     currentWrkEditUsers = this.wrkEditUsers.asObservable();
     currentWrkViewUsers = this.wrkViewUsers.asObservable();
-    // VELERO FIELDS
+    // VELERO via TMC FIELDS
     currentWrkClusterGroupName = this.wrkClusterGroupName.asObservable();
     currentWrkEnableDataProtection = this.wrkEnableDataProtection.asObservable();
     currentWrkDataProtectionCreds = this.wrkDataProtectionCreds.asObservable();
     currentWrkDataProtectionTargetLocation = this.wrkDataProtectionTargetLocation.asObservable();
+    // Offline Velero Fields
+    currentWrkEnableVelero = this.wrkEnableVelero.asObservable();
+    currentWrkVeleroBucketName = this.wrkVeleroBucketName.asObservable();
+    currentWrkVeleroUsername = this.wrkVeleroUsername.asObservable();
+    currentWrkVeleroPassword = this.wrkVeleroPassword.asObservable();
+    currentWrkVeleroRegion = this.wrkVeleroRegion.asObservable();
+    currentWrkVeleroS3Url = this.wrkVeleroS3Url.asObservable();
+    currentWrkVeleroPublicUrl = this.wrkVeleroPublicUrl.asObservable();
     constructor() {
     }
     // Infra Settings
@@ -988,6 +1023,9 @@ export  class VsphereNsxtDataService {
     changeSharedBaseImageVersion(sharedBaseImageVersion: string) {
         this.sharedBaseImageVersion.next(sharedBaseImageVersion);
     }
+    changeTkgCustomCert(tkgCustomCert: any) {
+        this.tkgCustomCert.next(tkgCustomCert);
+    }
     changeEnableHarbor(enableHarbor: boolean ) {
         this.enableHarbor.next(enableHarbor);
     }
@@ -1024,7 +1062,7 @@ export  class VsphereNsxtDataService {
     changeSharedViewUsers(viewUsers: string) {
         this.sharedViewUsers.next(viewUsers);
     }
-    // VELERO FIELDS
+    // VELERO via TMC FIELDS
     changeSharedClusterGroupName(grp: string) {
         this.sharedClusterGroupName.next(grp);
     }
@@ -1036,6 +1074,28 @@ export  class VsphereNsxtDataService {
     }
     changeSharedDataProtectionTargetLocation(location: string) {
         this.sharedDataProtectionTargetLocation.next(location);
+    }
+    // Offline Velero Fields
+    changeSharedEnableVelero(enable: boolean) {
+        this.sharedEnableVelero.next(enable);
+    }
+    changeSharedVeleroBucketName(bucket: string) {
+        this.sharedVeleroBucketName.next(bucket);
+    }
+    changeSharedVeleroUsername(username: string) {
+        this.sharedVeleroUsername.next(username);
+    }
+    changeSharedVeleroPassword(password: string) {
+        this.sharedVeleroPassword.next(password);
+    }
+    changeSharedVeleroRegion(region: string) {
+        this.sharedVeleroRegion.next(region);
+    }
+    changeSharedVeleroS3Url(s3Url: string) {
+        this.sharedVeleroS3Url.next(s3Url);
+    }
+    changeSharedVeleroPublicUrl(publicUrl: string) {
+        this.sharedVeleroPublicUrl.next(publicUrl);
     }
     // Extension
     changeEnableTanzuExtension(enableTanzuExtension: boolean) {
@@ -1232,7 +1292,7 @@ export  class VsphereNsxtDataService {
     changeWrkViewUsers(viewUsers: string) {
         this.wrkViewUsers.next(viewUsers);
     }
-    // VELERO FIELDS
+    // VELERO via TMC FIELDS
     changeWrkClusterGroupName(grp: string) {
         this.wrkClusterGroupName.next(grp);
     }
@@ -1244,5 +1304,27 @@ export  class VsphereNsxtDataService {
     }
     changeWrkDataProtectionTargetLocation(location: string) {
         this.wrkDataProtectionTargetLocation.next(location);
+    }
+    // Offline Velero Fields
+    changeWrkEnableVelero(enable: boolean) {
+        this.wrkEnableVelero.next(enable);
+    }
+    changeWrkVeleroBucketName(bucket: string) {
+        this.wrkVeleroBucketName.next(bucket);
+    }
+    changeWrkVeleroUsername(username: string) {
+        this.wrkVeleroUsername.next(username);
+    }
+    changeWrkVeleroPassword(password: string) {
+        this.wrkVeleroPassword.next(password);
+    }
+    changeWrkVeleroRegion(region: string) {
+        this.wrkVeleroRegion.next(region);
+    }
+    changeWrkVeleroS3Url(s3Url: string) {
+        this.wrkVeleroS3Url.next(s3Url);
+    }
+    changeWrkVeleroPublicUrl(publicUrl: string) {
+        this.wrkVeleroPublicUrl.next(publicUrl);
     }
 }

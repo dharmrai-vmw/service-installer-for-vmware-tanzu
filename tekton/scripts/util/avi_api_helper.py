@@ -1163,16 +1163,16 @@ def deployAndConfigureAvi(govc_client: GovcClient, vm_name, controller_ova_locat
         else:
             logger.info("Set DNs Ntp Smtp successfully")
         if disable_welcome_screen(ip, csrf2, avi_version) is None:
-            logger.error("Failed to disable welcome screen")
+            logger.error("Failed to deactivate welcome screen")
             d = {
                 "responseType": "ERROR",
-                "msg": "Failed to disable welcome screen",
+                "msg": "Failed to deactivate welcome screen",
                 "ERROR_CODE": 500
             }
             logger.debug("Error: {}".format(json.dumps(d['msg'])))
             return False
         else:
-            logger.info("Disable welcome screen successfully")
+            logger.info("Deactivate welcome screen successfully")
         # deployed_avi_version = obtain_avi_version(ip, jsonspec)
         # if deployed_avi_version[0] is None:
         #     logger.error("Failed to login and obtain avi version")

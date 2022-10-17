@@ -169,7 +169,7 @@ export class TKGMgmtNetworkSettingComponent extends StepFormDirective implements
 
      onTkgMgmtDataValidateClick() {
         if(this.formGroup.valid) {
-            this.errorNotification = '';
+            this.errorNotification = null;
             const gatewayIp = this.formGroup.get('TKGMgmtGatewayCidr').value;
             const dhcpStart = this.formGroup.get('TKGMgmtDhcpStartRange').value;
             const dhcpEnd = this.formGroup.get('TKGMgmtDhcpEndRange').value;
@@ -177,7 +177,7 @@ export class TKGMgmtNetworkSettingComponent extends StepFormDirective implements
             if (block.contains(dhcpStart) && block.contains(dhcpEnd)) {
                 this.apiClient.TkgMgmtDataNwValidated = true;
                 this.validated = true;
-                this.errorNotification = '';
+                this.errorNotification = null;
             } else if (!block.contains(dhcpStart) && !block.contains(dhcpEnd)) {
                 this.errorNotification = 'DHCP Start and End IP are out of the provided subnet';
                 this.apiClient.TkgMgmtDataNwValidated = false;

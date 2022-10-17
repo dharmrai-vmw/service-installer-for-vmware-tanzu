@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import sys
+import socket
 import requests
 import logging
 from flask import Blueprint, current_app, jsonify, request
@@ -21,7 +22,7 @@ from common.common_utilities import form_avi_ha_cluster, isAviHaEnabled, isEnvTk
     get_avi_version, \
     envCheck, manage_avi_certificates, createNsxtSegment, seperateNetmaskAndIp, createGroup, createFirewallRule, \
     getTier1Details, createVcfDhcpServer, getNetworkIp, get_ip_address, is_ipv4, getESXIips, updateDefaultRule, \
-    getIpFromHost, downloadAviController, obtain_avi_version
+    getIpFromHost, downloadAviController, obtain_avi_version, ping_check_gateways
 from common.operation.constants import ControllerLocation
 from common.util.file_helper import FileHelper
 from common.lib.govc_client import GovcClient
@@ -42,7 +43,7 @@ def aviConfig_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy avi " + str(avi_dep[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     avi_cert = aviCertManagement_vsphere()
@@ -51,13 +52,13 @@ def aviConfig_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to manage  avi cert " + str(avi_cert[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Avi configured Successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Avi configured Successfully ")
     return jsonify(d), 200
@@ -71,7 +72,7 @@ def avi_vcf_pre_config():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -80,7 +81,7 @@ def avi_vcf_pre_config():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -104,7 +105,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create shared segments" + str(shared_segment[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             dhcp = createVcfDhcpServer()
@@ -113,7 +114,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create dhcp server " + str(dhcp[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             cluster_wip = request.get_json(force=True)['tkgComponentSpec']['tkgClusterVipNetwork'][
@@ -131,24 +132,24 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create shared segment " + cluster_wip + " " + str(segment[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
-            mgmt_data = request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName']
-            gatewayAddress = request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkGatewayCidr']
-            network = getNetworkIp(gatewayAddress)
-            segment = createNsxtSegment(mgmt_data,
-                                        gatewayAddress,
-                                        dhcpStart,
-                                        dhcpEnd, dnsServers, network, False)
-            if segment[1] != 200:
-                current_app.logger.error("Failed to create  segments " + mgmt_data + " " + str(segment[0].json["msg"]))
-                d = {
-                    "responseType": "ERROR",
-                    "msg": "Failed to create shared segment " + mgmt_data + " " + str(segment[0].json["msg"]),
-                    "ERROR_CODE": 500
-                }
-                return jsonify(d), 500
+            # mgmt_data = request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName']
+            # gatewayAddress = request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkGatewayCidr']
+            # network = getNetworkIp(gatewayAddress)
+            # segment = createNsxtSegment(mgmt_data,
+            #                             gatewayAddress,
+            #                             dhcpStart,
+            #                             dhcpEnd, dnsServers, network, False)
+            # if segment[1] != 200:
+            #     current_app.logger.error("Failed to create  segments " + mgmt_data + " " + str(segment[0].json["msg"]))
+            #     d = {
+            #         "responseType": "ERROR",
+            #         "msg": "Failed to create shared segment " + mgmt_data + " " + str(segment[0].json["msg"]),
+            #         "STATUS_CODE": 500
+            #     }
+            #     return jsonify(d), 500
             avi_mgmt = request.get_json(force=True)['tkgComponentSpec']['aviMgmtNetwork'][
                 'aviMgmtNetworkName']
             avi_gatewayAddress = request.get_json(force=True)['tkgComponentSpec']['aviMgmtNetwork'][
@@ -162,7 +163,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create shared segment " + avi_mgmt + " " + str(segment[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             ip = get_ip_address("eth0")
@@ -171,7 +172,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get arcas vm ip",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             arcas_group = createGroup(VCF.ARCAS_GROUP, None,
@@ -184,7 +185,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + VCF.ARCAS_GROUP + " " + str(
                         arcas_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             arcas_svc = createVipService(ServiceName.ARCAS_SVC, "8888")
@@ -196,7 +197,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create service " + ServiceName.ARCAS_SVC + " " + str(
                         arcas_svc[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             arcas_svc = createVipService(ServiceName.ARCAS_BACKEND_SVC, "5000")
@@ -208,7 +209,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create service " + ServiceName.ARCAS_BACKEND_SVC + " " + str(
                         arcas_svc[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             avi_mgmt_group = createGroup(GroupNameCgw.DISPLAY_NAME_VCF_AVI_Management_Network_Group_CGW, avi_mgmt,
@@ -221,7 +222,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + GroupNameCgw.DISPLAY_NAME_VCF_AVI_Management_Network_Group_CGW + " " + str(
                         avi_mgmt_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             cluster_vip_group = createGroup(GroupNameCgw.DISPLAY_NAME_VCF_CLUSTER_VIP_NETWORK_Group_CGW, cluster_wip,
@@ -234,7 +235,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create  group " + GroupNameCgw.DISPLAY_NAME_VCF_CLUSTER_VIP_NETWORK_Group_CGW + " " + str(
                         cluster_vip_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             shared_service_group = createGroup(GroupNameCgw.DISPLAY_NAME_VCF_TKG_SharedService_Group_CGW,
@@ -247,7 +248,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create  group " + GroupNameCgw.DISPLAY_NAME_VCF_TKG_SharedService_Group_CGW + " " + str(
                         shared_service_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             mgmt = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents']['tkgMgmtNetworkName']
@@ -260,7 +261,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + GroupNameCgw.DISPLAY_NAME_VCF_TKG_Management_Network_Group_CGW + " " + str(
                         mgmt_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             dns = request.get_json(force=True)['envSpec']['infraComponents']['dnsServersIp']
@@ -274,7 +275,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + GroupNameCgw.DISPLAY_NAME_VCF_DNS_IPs_Group + " " + str(
                         dns_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             ntp = request.get_json(force=True)['envSpec']['infraComponents']['ntpServers']
@@ -288,7 +289,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + GroupNameCgw.DISPLAY_NAME_VCF_NTP_IPs_Group + " " + str(
                         ntp_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             vCenter = request.get_json(force=True)['envSpec']['vcenterDetails']['vcenterAddress']
@@ -299,7 +300,7 @@ def avi_vcf_pre_config():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to fetch VC ip",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             vc_group = createGroup(GroupNameCgw.DISPLAY_NAME_VCF_vCenter_IP_Group,
@@ -312,7 +313,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + GroupNameCgw.DISPLAY_NAME_VCF_vCenter_IP_Group + " " + str(
                         vc_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             ips = getESXIips()
@@ -322,7 +323,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to create get esxi ip " + ips[1],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             esx_group = createGroup(VCF.ESXI_GROUP,
@@ -335,7 +336,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create group " + VCF.ESXI_GROUP + " " + str(
                         esx_group[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             headers_ = grabNsxtHeaders()
@@ -343,7 +344,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to nsxt info " + str(headers_[1]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             teir1 = getTier1Details(headers_)
@@ -351,7 +352,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to tier1 details" + str(headers_[1]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -372,7 +373,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_ARCAS_UI + " " + str(
                         arcas_fw[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -394,7 +395,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + GroupNameCgw.DISPLAY_NAME_VCF_ARCAS_BACKEND + " " + str(
                         arcas_fw[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -417,7 +418,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + GroupNameCgw.DISPLAY_NAME_VCF_TKG_and_AVI_DNS + " " + str(
                         fw[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -441,7 +442,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVI_NTP + " " + str(
                         fw_vip[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -465,7 +466,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVI_to_vCenter + " " + str(
                         fw_vip[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -488,7 +489,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + VCF.ESXI_FW + " " + str(
                         fw_esx[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -510,7 +511,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVI_to_Internet + " " + str(
                         fw_vip[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -534,7 +535,90 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_TKGtoAVIMgmt + " " + str(
                         fw_vip[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            payload = {"action": "ALLOW",
+                       "display_name": "Alb",
+                       "logged": False,
+                       "source_groups": ["ANY"],
+                       "destination_groups": [
+                           avi_mgmt_group[0].json["path"]],
+                       "services": ["/infra/services/HTTPS"],
+                       "scope": [teir1[0]]
+                       }
+            fw_vip = createFirewallRule(Policy_Name.POLICY_NAME, "Alb",
+                                        payload)
+            if fw_vip[1] != 200:
+                current_app.logger.error(
+                    "Failed to create firewall " + "Alb" + " " + str(
+                        fw_vip[0].json["msg"]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to create firewall " + "Alb" + " " + str(
+                        fw_vip[0].json["msg"]),
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            nsx_fqdn = str(request.get_json(force=True)['envSpec']['vcenterDetails']["nsxtAddress"])
+            nsx_ip = socket.gethostbyname(nsx_fqdn)
+            nsxt_group = createGroup(VCF.NSXT_GROUP, None, "true", nsx_ip)
+            if nsxt_group[1] != 200:
+                current_app.logger.error(
+                    "Failed to create  group " + VCF.NSXT_GROUP + " " + str(
+                        nsxt_group[0].json["msg"]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to create group " + VCF.NSXT_GROUP + " " + str(
+                        nsxt_group[0].json["msg"]),
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            payload = {"action": "ALLOW",
+                       "display_name": "alb-to-nsx",
+                       "logged": False,
+                       "source_groups": [avi_mgmt_group[0].json["path"]],
+                       "destination_groups": [
+                            nsxt_group[0].json["path"]],
+                       "services": ["/infra/services/HTTPS"],
+                       "scope": [teir1[0]]
+                       }
+            fw_alb_to_nsx = createFirewallRule(Policy_Name.POLICY_NAME, "alb-to-nsx",
+                                        payload)
+            if fw_alb_to_nsx[1] != 200:
+                current_app.logger.error(
+                    "Failed to create firewall " + "alb-to-nsx" + " " + str(
+                        fw_alb_to_nsx[0].json["msg"]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to create firewall " + "alb-to-nsx" + " " + str(
+                        fw_alb_to_nsx[0].json["msg"]),
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+
+            payload = {"action": "ALLOW",
+                       "display_name": FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVIMgmt,
+                       "logged": False,
+                       "source_groups": [
+                           avi_mgmt_group[0].json["path"]],
+                       "destination_groups": [
+                            ntp_group[0].json["path"],
+                            dns_group[0].json["path"]],
+                       "services": ["/infra/services/DNS", "/infra/services/NTP"],
+                       "scope": [teir1[0]]
+                       }
+            fw_vip = createFirewallRule(Policy_Name.POLICY_NAME, FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVIMgmt,
+                                        payload)
+            if fw_vip[1] != 200:
+                current_app.logger.error(
+                    "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVIMgmt + " " + str(
+                        fw_vip[0].json["msg"]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_and_AVIMgmt + " " + str(
+                        fw_vip[0].json["msg"]),
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             vip = createVipService(ServiceName.KUBE_VIP_VCF_SERVICE, "6443")
@@ -546,7 +630,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create service " + ServiceName.KUBE_VIP_VCF_SERVICE + " " + str(
                         vip[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             payload = {"action": "ALLOW",
@@ -570,7 +654,7 @@ def avi_vcf_pre_config():
                     "responseType": "ERROR",
                     "msg": "Failed to create firewall " + FirewallRuleCgw.DISPLAY_NAME_VCF_TKG_CLUSTER_VIP_CGW + " " + str(
                         fw_vip[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             update = updateDefaultRule(Policy_Name.POLICY_NAME)
@@ -580,7 +664,7 @@ def avi_vcf_pre_config():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to default rule " + str(update[0].json["msg"]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
         except Exception as e:
@@ -588,14 +672,14 @@ def avi_vcf_pre_config():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to configure vcf " + str(e),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     current_app.logger.info("VCF pre configuration successful.")
     d = {
         "responseType": "ERROR",
         "msg": "VCF pre configuration successful.",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -608,7 +692,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -617,10 +701,20 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
+    current_app.logger.info("Performing ping checks for default gateways...")
+    if not ping_check_gateways(env):
+        d = {
+            "responseType": "ERROR",
+            "msg": "Ping test failed for default gateways",
+            "STATUS_CODE": 500
+        }
+        return jsonify(d), 500
+    else:
+        current_app.logger.info("Ping check passed for gateways")
     refreshToken = request.get_json(force=True)['envSpec']['marketplaceSpec']['refreshToken']
     if refreshToken:
         download_status = downloadAviController(env)
@@ -629,7 +723,7 @@ def aviDeployment_vsphere():
             d = {
                 "responseType": "ERROR",
                 "msg": download_status[0],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -653,7 +747,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(create[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     try:
@@ -688,7 +782,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get input " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if str(control_plan) == "prod":
@@ -699,7 +793,7 @@ def aviDeployment_vsphere():
             d = {
                 "responseType": "ERROR",
                 "msg": "Avi fqdn not provided, for ha mode 3 fqdns are required",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     if not avi_fqdn:
@@ -707,7 +801,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Avi fqdn not provided",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if str(control_plan).lower() == "dev":
@@ -725,7 +819,7 @@ def aviDeployment_vsphere():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Mgmt cidr not provided",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             gateway, netmask = seperateNetmaskAndIp(mgmt_cidr)
@@ -773,7 +867,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Currently other then dev plan is not supported",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -782,7 +876,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -797,7 +891,7 @@ def aviDeployment_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy and configure avi  " + str(dep[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if isAviHaEnabled(env):
@@ -811,7 +905,7 @@ def aviDeployment_vsphere():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to deploy and configure avi  " + str(dep2[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Deploying 3rd avi controller")
@@ -824,7 +918,7 @@ def aviDeployment_vsphere():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to deploy and configure avi  " + str(dep3[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         res, status = form_avi_ha_cluster(ip, env, None, avi_version)
@@ -833,13 +927,13 @@ def aviDeployment_vsphere():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to form avi ha cluster " + str(status),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully deployed and configured avi",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -857,7 +951,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Un-Authorized " + str(e),
-            "ERROR_CODE": 401
+            "STATUS_CODE": 401
         }
         current_app.logger.error("Un-Authorized " + str(e))
         return jsonify(d), 401
@@ -870,7 +964,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -883,7 +977,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Avi fqdn not provided",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     ip = checkforIpAddress(getSi(vcenter_ip, vcenter_username, password), avi_fqdn)
@@ -892,7 +986,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     deployed_avi_version = obtain_avi_version(ip, env)
@@ -901,7 +995,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to login and obtain avi version " + deployed_avi_version[1],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     aviVersion = deployed_avi_version[0]
@@ -911,7 +1005,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to mange-certificate " + cert[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     isGen = cert[2]
@@ -920,7 +1014,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "SUCCESS",
             "msg": "Generated and replaced the certificate successfully",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
     else:
@@ -928,7 +1022,7 @@ def aviCertManagement_vsphere():
         d = {
             "responseType": "SUCCESS",
             "msg": "Certificate is already generated",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
 

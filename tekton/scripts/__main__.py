@@ -7,6 +7,7 @@ import click
 import yaml
 from constants.constants import Paths, Upgrade_Extensions
 from model.desired_state import DesiredState
+from model.user_credentials import UserCredentials
 from model.run_config import RunConfig, DeploymentPlatform, ScaleConfig, RepaveConfig
 from model.status import State, get_fresh_state
 from util.env_validation import EnvValidator
@@ -24,6 +25,9 @@ from workflows.ra_workload_cluster_upgrade import RaWorkloadUpgradeWorkflow
 from workflows.ra_scale_workflow import ScaleWorkflow
 from workflows.ra_repave_workflow import RepaveWorkflow
 from workflows.ra_deploy_ext_workflow import RaDeployExtWorkflow
+from pre_setup.pre_setup import PreSetup
+from util.cleanup_util import CleanUpUtil
+from pre_setup.tkn_docker_img import GenerateTektonDockerImage
 
 logger = LoggerHelper.get_logger(name="__main__")
 
@@ -36,10 +40,12 @@ def load_run_config(root_dir):
     state: State = FileHelper.load_state(state_file_path)
     desired_state: DesiredState = FileHelper.load_desired_state(os.path.join(root_dir,
                                                                              Paths.DESIRED_STATE_PATH))
+    user_cred: UserCredentials = FileHelper.load_values_yaml(Paths.VALUES_YAML_PATH)
     support_matrix = yaml.safe_load(FileHelper.read_resource(Paths.SUPPORT_MATRIX_FILE))
     run_config = RunConfig(root_dir=root_dir, state=state, desired_state=desired_state,
                            support_matrix=support_matrix,
                            deployment_platform=DeploymentPlatform.VSPHERE,
+                           user_cred=user_cred,
                            vmc=None)
     return run_config
 
@@ -71,6 +77,17 @@ def cli(ctx, root_dir):
 
 @cli.group()
 @click.pass_context
+def tkn_docker(ctx):
+    ctx.ensure_object(dict)
+
+@tkn_docker.command(name="build")
+@click.pass_context
+def build_docker(ctx):
+    run_config = load_run_config(ctx.obj["ROOT_DIR"])
+    GenerateTektonDockerImage(root_dir=ctx.obj["ROOT_DIR"], run_config=run_config).generate_tkn_docker_image()
+
+@cli.group()
+@click.pass_context
 def avi(ctx):
     ctx.ensure_object(dict)
 
@@ -79,7 +96,19 @@ def avi(ctx):
 @click.pass_context
 def avi_deploy(ctx):
     run_config = load_run_config(ctx.obj["ROOT_DIR"])
-    RALBWorkflow(run_config=run_config).avi_controller_setup()
+    pre_setup_obj = PreSetup(root_dir=ctx.obj["ROOT_DIR"], run_config=run_config)
+    result_dict, msg = pre_setup_obj.pre_check_avi()
+    if not result_dict["avi"]["deployed"]:
+        logger.warning(msg)
+        RALBWorkflow(run_config=run_config).avi_controller_setup()
+    elif "AVI Version mis-matched" in msg:
+        logger.error(msg)
+    elif "UP" not in result_dict["avi"]["health"]:
+        logger.error(msg)
+        # TODO: Can we start AVI ?
+    else:
+        logger.info(msg)
+        logger.debug(result_dict)
 
 @cli.group()
 @click.pass_context
@@ -91,14 +120,33 @@ def mgmt(ctx):
 @click.pass_context
 def mgmt_deploy(ctx):
     run_config = load_run_config(ctx.obj["ROOT_DIR"])
-    RaMgmtClusterWorkflow(run_config).create_mgmt_cluster()
+    pre_setup_obj = PreSetup(root_dir=ctx.obj["ROOT_DIR"], run_config=run_config)
+    cleanup_obj = CleanUpUtil()
+    result_dict, msg = pre_setup_obj.pre_check_mgmt()
+    if not result_dict["mgmt"]["deployed"]:
+        logger.warning(msg)
+        RaMgmtClusterWorkflow(run_config).create_mgmt_cluster()
+    elif "UP" not in result_dict["mgmt"]["health"]:
+        logger.warning(msg)
+        cleanup_obj.delete_mgmt_cluster(result_dict["name"])
+        RaMgmtClusterWorkflow(run_config).create_mgmt_cluster()
+    else:
+        logger.info(msg)
+        logger.debug(result_dict)
 
 @mgmt.command(name="enable-wcp")
 @click.pass_context
 def enable_wcp(ctx):
     run_config = load_run_config(ctx.obj["ROOT_DIR"])
-    RaMgmtClusterWorkflow(run_config).enable_wcp()
-
+    pre_setup_obj = PreSetup(root_dir=ctx.obj["ROOT_DIR"], run_config=run_config)
+    result_dict, msg = pre_setup_obj.pre_check_enable_wcp()
+    if not result_dict["enable_wcp"]["enabled"]:
+        logger.warning(msg)
+        RaMgmtClusterWorkflow(run_config).enable_wcp()
+    elif "UP" not in result_dict["enable_wcp"]["health"]:
+        logger.warning(msg)
+    else:
+        logger.warning(msg)
 
 @mgmt.command(name="upgrade")
 @click.pass_context
@@ -117,7 +165,20 @@ def shared_services(ctx):
 @click.pass_context
 def ss_cluster_deploy(ctx):
     run_config = load_run_config(ctx.obj["ROOT_DIR"])
-    RaSharedClusterWorkflow(run_config).deploy()
+    pre_setup_obj = PreSetup(root_dir=ctx.obj["ROOT_DIR"], run_config=run_config)
+    cleanup_obj = CleanUpUtil()
+    result_dict, msg = pre_setup_obj.pre_check_shrd()
+    if not result_dict["shared_services"]["deployed"]:
+        logger.warning(msg)
+        RaSharedClusterWorkflow(run_config).deploy()
+    elif "UP" not in result_dict["shared_services"]["health"]:
+        logger.warning(msg)
+        cleanup_obj.delete_cluster(result_dict["name"])
+        RaSharedClusterWorkflow(run_config).deploy()
+    else:
+        logger.info(msg)
+        logger.debug(result_dict)
+
 
 @shared_services.command(name="upgrade")
 @click.pass_context
@@ -135,7 +196,19 @@ def workload_clusters(ctx):
 @click.pass_context
 def wl_deploy(ctx):
     run_config = load_run_config(ctx.obj["ROOT_DIR"])
-    RaWorkloadClusterWorkflow(run_config).deploy()
+    pre_setup_obj = PreSetup(root_dir=ctx.obj["ROOT_DIR"], run_config=run_config)
+    cleanup_obj = CleanUpUtil()
+    result_dict, msg = pre_setup_obj.pre_check_wrkld()
+    if not result_dict["workload_clusters"]["deployed"]:
+        logger.warning(msg)
+        RaWorkloadClusterWorkflow(run_config).deploy()
+    elif "UP" not in result_dict["workload_clusters"]["health"]:
+        logger.warning(msg)
+        cleanup_obj.delete_cluster(result_dict["name"])
+        RaWorkloadClusterWorkflow(run_config).deploy()
+    else:
+        logger.info(msg)
+        logger.debug(result_dict)
 
 @workload_clusters.command(name="upgrade")
 @click.pass_context

@@ -71,6 +71,36 @@ class AlbPayload:
         ]
     }}
     """
+    VIRTUAL_SERVICE_NSX_VIP = """
+    {{
+        "cloud_ref":"{cloud_ref}",
+        "east_west_placement":false,
+        "name":"{virtual_service_name_vip}",
+        "vrf_context_ref":"{vrf_context_ref}",
+        "tier1_lr":"{tier_1_gw_uuid}",
+        "vip":[
+            {{
+                "enabled":true,
+                "auto_allocate_ip":true,
+                "auto_allocate_floating_ip":false,
+                "avi_allocated_vip":false,
+                "avi_allocated_fip":false,
+                "auto_allocate_ip_type":"V4_ONLY",
+                "prefix_length":32,
+                "ipam_network_subnet":{{
+                "network_ref":"{network_ref}",
+                "subnet":{{
+                    "ip_addr":{{
+                    "addr":"{addr}",
+                    "type":"V4"
+                }},
+                "mask": {mask}
+            }}
+            }}
+        }}
+        ]
+    }}
+    """
     VIRTUAL_SERVICE = """
         {{
             "cloud_ref": "{cloud_ref}",
@@ -90,6 +120,61 @@ class AlbPayload:
             "traffic_enabled": true,
             "type": "VS_TYPE_NORMAL",
             "weight": 1
+    }}
+    """
+    NSX_VIRTUAL_SERVICE = """
+    {{
+        "enabled": true,
+        "analytics_policy": {{
+            "full_client_logs": {{
+                "enabled": true,
+                "duration": 30,
+                "throttle": 10
+            }},
+            "client_insights": "NO_INSIGHTS",
+            "all_headers": false,
+            "metrics_realtime_update": {{
+                "enabled": true,
+                "duration": 30
+            }},
+            "udf_log_throttle": 10,
+            "significant_log_throttle": 10,
+            "learning_log_policy": {{
+                "enabled": false
+            }}
+        }},
+        "enable_autogw": true,
+        "weight": 1,
+        "limit_doser": false,
+        "type": "VS_TYPE_NORMAL",
+        "cloud_type": "CLOUD_NSXT",
+        "use_bridge_ip_as_vip": false,
+        "ign_pool_net_reach": false,
+        "remove_listening_port_on_vs_down": false,
+        "close_client_conn_on_config_update": false,
+        "advertise_down_vs": false,
+        "scaleout_ecmp": false,
+        "active_standby_se_tag": "ACTIVE_STANDBY_SE_1",
+        "use_vip_as_snat": false,
+        "traffic_enabled": true,
+        "allow_invalid_client_cert": false,
+        "cloud_ref": "{cloud_ref}",
+        "services": [
+            {{
+                "port": 80,
+                "port_range_end": 80,
+                "enable_ssl": false
+            }}
+        ],
+        "se_group_ref": "{se_group_ref}",
+        "vrf_context_ref": "{tier_1_vrf_context_url}",
+        "name": "sivt-virtual-service",
+        "vsvip_ref": "{vsvip_ref}",
+        "http_policies": [],
+        "network_security_policy_ref_data": {{
+            "name": "sivt-virtual-service",
+            "rules": []
+        }}
     }}
     """
     CREATE_SE_GROUP = """

@@ -26,8 +26,9 @@ def replaceValueSysConfig(fileName, key1, key2, value):
             data[key1] = value
         else:
             data[key1][key2] = value
+    json_object_m = json.dumps(data, indent=4)
     with open(fileName, 'w') as f:
-        json.dump(data, f)
+        f.write(json_object_m)
 
 
 def replaceCertConfig(fileName, key1, key2, value):

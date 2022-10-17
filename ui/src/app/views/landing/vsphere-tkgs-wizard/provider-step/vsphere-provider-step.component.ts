@@ -286,7 +286,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
     }
 
     validateResourceGroupData() {
-        this.errorNotification = '';
+        this.errorNotification = null;
         if (!this.uploadStatus) {
             return true;
         } else {
@@ -380,7 +380,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
     login() {
         this.loadingState = ClrLoadingState.LOADING;
         this.connected = true;
-        this.errorNotification = '';
+        this.errorNotification = null;
         this.loadingState = ClrLoadingState.DEFAULT;
     }
 
@@ -439,7 +439,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
                     this.aviOvaImages = data.CONTENT_LIBRARY_FILES;
                     this.formGroup.get('aviOvaImage').enable();
                     this.fetchOvaImage = true;
-                    this.aviOvaErrorNotification = '';
+                    this.aviOvaErrorNotification = null;
                     if (this.uploadStatus) {
                         if (this.VcOvaImage !== '') {
                             if (this.aviOvaImages.indexOf(this.VcOvaImage) === -1) {
@@ -647,7 +647,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
                     this.apiClient.storagePolicies = data.STORAGE_POLICIES;
 //                     this.getVmClasses();
                     this.fetchResources = true;
-                    this.errorNotification = '';
+                    this.errorNotification = null;
                     this.connected = true;
                     this.dataLoadingState = ClrLoadingState.DEFAULT;
                     this.enableAllFormFields();
@@ -692,7 +692,7 @@ export class VSphereProviderStepComponent extends StepFormDirective implements O
                 if (data.responseType === 'SUCCESS') {
                     this.apiClient.namespaceVmClass = data.VM_CLASSES;
                     this.fetchResources = true;
-                    this.errorNotification = '';
+                    this.errorNotification = null;
                     this.connected = true;
                     this.dataLoadingState = ClrLoadingState.DEFAULT;
                     this.enableAllFormFields();

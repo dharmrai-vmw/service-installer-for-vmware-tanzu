@@ -142,7 +142,7 @@ export class TKGWorkloadNetworkSettingComponent extends StepFormDirective implem
                     const block = new Netmask(this.gatewayCidr);
                     if (block.contains(this.dhcpStart) && block.contains(this.dhcpEnd)) {
                         this.apiClient.TkgWrkDataNwValidated = true;
-                        this.errorNotification = '';
+                        this.errorNotification = null;
                     } else if (!block.contains(this.dhcpStart) && !block.contains(this.dhcpEnd)) {
                         this.errorNotification = 'DHCP Start and End IP are out of the provided subnet';
                         this.apiClient.TkgWrkDataNwValidated = false;
@@ -173,7 +173,7 @@ export class TKGWorkloadNetworkSettingComponent extends StepFormDirective implem
             if(this.formGroup.get('TKGDataGatewayCidr').valid &&
                 this.formGroup.get('TKGDataDhcpStartRange').valid &&
                 this.formGroup.get('TKGDataDhcpEndRange').valid) {
-                this.errorNotification = '';
+                this.errorNotification = null;
                 const gatewayIp = this.formGroup.get('TKGDataGatewayCidr').value;
                 const dhcpStart = this.formGroup.get('TKGDataDhcpStartRange').value;
                 const dhcpEnd = this.formGroup.get('TKGDataDhcpEndRange').value;

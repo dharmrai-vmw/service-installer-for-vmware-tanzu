@@ -705,6 +705,12 @@ export class VMCUploadWizardComponent implements OnInit {
                         this.vmcDataService.changeSharedBaseImageVersion(
                             input['componentSpec']['tkgSharedServiceSpec']['tkgSharedserviceKubeVersion']);
                     }
+                    if(input['componentSpec']['tkgSharedServiceSpec'].hasOwnProperty('tkgCustomCertsPath')) {
+                        if(input['componentSpec']['tkgSharedServiceSpec']['tkgCustomCertsPath'] !== "" && 
+                        input['componentSpec']['tkgSharedServiceSpec']['tkgCustomCertsPath'] !== null) {
+                            this.vmcDataService.changeTkgCustomCert(input['componentSpec']['tkgSharedServiceSpec']['tkgCustomCertsPath']);
+                        }
+                    }
                     if (this.apiClient.enableIdentityManagement) {
                         if (input['componentSpec'].hasOwnProperty('tkgSharedserviceRbacUserRoleSpec')) {
                             if (input['componentSpec']['tkgSharedserviceRbacUserRoleSpec'].hasOwnProperty('clusterAdminUsers')) {
@@ -762,6 +768,45 @@ export class VMCUploadWizardComponent implements OnInit {
                     } else {
                         this.apiClient.sharedDataProtectonEnabled = false;
                         this.vmcDataService.changeSharedEnableDataProtection(false);
+                    }
+                    if(!this.apiClient.tmcEnabled) {
+                        if(input['componentSpec']['tkgSharedServiceSpec'].hasOwnProperty('tkgSharedClusterVeleroDataProtection')) {
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('enableVelero')) {
+                                if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['enableVelero'] === 'true') {
+                                    this.vmcDataService.changeSharedEnableVelero(true);
+                                }
+                            } else {
+                                this.vmcDataService.changeSharedEnableVelero(false);
+                            }
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('username')) {
+                                this.vmcDataService.changeSharedVeleroUsername(
+                                    input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['username']);
+                            }
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('passwordBase64')) {
+                                this.vmcDataService.changeSharedVeleroPassword(
+                                    atob(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['passwordBase64']));
+                            }
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('bucketName')) {
+                                this.vmcDataService.changeSharedVeleroBucketName(
+                                    input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['bucketName']);
+                            }
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('backupRegion')) {
+                                this.vmcDataService.changeSharedVeleroRegion(
+                                    input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['backupRegion']);
+                            }
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('backupS3Url')) {
+                                this.vmcDataService.changeSharedVeleroS3Url(
+                                    input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['backupS3Url']);
+                            }
+                            if(input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection'].hasOwnProperty('backupPublicUrl')) {
+                                this.vmcDataService.changeSharedVeleroPublicUrl(
+                                    input['componentSpec']['tkgSharedServiceSpec']['tkgSharedClusterVeleroDataProtection']['backupPublicUrl']);
+                            }
+                        } else {
+                            this.vmcDataService.changeSharedEnableVelero(false);
+                        }
+                    } else {
+                        this.vmcDataService.changeSharedEnableVelero(false);
                     }
                 }
                 if (input['componentSpec'].hasOwnProperty('harborSpec')) {
@@ -1000,6 +1045,45 @@ export class VMCUploadWizardComponent implements OnInit {
                     } else {
                         this.vmcDataService.changeWrkEnableDataProtection(false);
                         this.apiClient.wrkDataProtectionEnabled = false;
+                    }
+                    if(!this.apiClient.tmcEnabled) {
+                        if(input['componentSpec']['tkgWorkloadSpec'].hasOwnProperty('tkgWorkloadClusterVeleroDataProtection')) {
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('enableVelero')) {
+                                if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['enableVelero'] === 'true') {
+                                    this.vmcDataService.changeWrkEnableVelero(true);
+                                }
+                            } else {
+                                this.vmcDataService.changeWrkEnableVelero(false);
+                            }
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('username')) {
+                                this.vmcDataService.changeWrkVeleroUsername(
+                                    input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['username']);
+                            }
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('passwordBase64')) {
+                                this.vmcDataService.changeWrkVeleroPassword(
+                                    atob(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['passwordBase64']));
+                            }
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('bucketName')) {
+                                this.vmcDataService.changeWrkVeleroBucketName(
+                                    input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['bucketName']);
+                            }
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('backupRegion')) {
+                                this.vmcDataService.changeWrkVeleroRegion(
+                                    input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['backupRegion']);
+                            }
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('backupS3Url')) {
+                                this.vmcDataService.changeWrkVeleroS3Url(
+                                    input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['backupS3Url']);
+                            }
+                            if(input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection'].hasOwnProperty('backupPublicUrl')) {
+                                this.vmcDataService.changeWrkVeleroPublicUrl(
+                                    input['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterVeleroDataProtection']['backupPublicUrl']);
+                            }
+                        } else {
+                            this.vmcDataService.changeWrkEnableVelero(false);
+                        }
+                    } else {
+                        this.vmcDataService.changeWrkEnableVelero(false);
                     }
                 }
             }

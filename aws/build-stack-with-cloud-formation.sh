@@ -51,10 +51,13 @@ if ! aws cloudformation describe-stacks --stack-name tkg-aws-vmware-com > /dev/n
   a_roles=("control-plane.tkg.cloud.vmware.com" "controllers.tkg.cloud.vmware.com" "nodes.tkg.cloud.vmware.com")
   a_policies=("control-plane.tkg.cloud.vmware.com" "controllers.tkg.cloud.vmware.com" "nodes.tkg.cloud.vmware.com")
   if [[ "${DEPLOYMENT_ENVIRONMENT}" == "non-airgapped" ]]; then
+    # to ignore return error from check_roles_profile_policies
+    set +o errexit
     check_roles_profile_policies
   fi
   # if roles and policies are there, code will not create else it just show user a message
   if [ $? -eq 0 ]; then
+    set -o errexit
     echo "Building cloudformation stack on AWS with name tkg-aws-vmware-com"
     aws cloudformation create-stack \
         --stack-name tkg-aws-vmware-com  \
@@ -76,10 +79,13 @@ if ! aws cloudformation describe-stacks --stack-name sivt-federal-aws-vmware-com
   a_roles=( ${roles[@]/#/$AWS_DEFAULT_REGION-} )
   a_policies=( ${policies[@]/#/$AWS_DEFAULT_REGION-} )
   if [[ "$DEPLOYMENT_ENVIRONMENT" == "non-airgapped" ]]; then
+    # to ignore return error from check_roles_profile_policies
+    set +o errexit
     check_roles_profile_policies
   fi
   # if roles and policies are there, code will not create else it just show user a message
   if [ $? -eq 0 ]; then
+    set -o errexit
     echo "Building cloudformation stack on AWS with name sivt-federal-aws-vmware-com"
     aws cloudformation create-stack \
           --stack-name sivt-federal-aws-vmware-com  \

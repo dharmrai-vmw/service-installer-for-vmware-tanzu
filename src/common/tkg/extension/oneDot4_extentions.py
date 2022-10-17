@@ -44,7 +44,7 @@ class extention_types_dot4_impl(extentions_types):
             d = {
                 "responseType": "ERROR",
                 "msg": fluent_bit_response[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -52,7 +52,7 @@ class extention_types_dot4_impl(extentions_types):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Successfully deployed fluent bit syslog",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
 
@@ -63,7 +63,7 @@ class extention_types_dot4_impl(extentions_types):
             d = {
                 "responseType": "ERROR",
                 "msg": monitoring[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -71,7 +71,7 @@ class extention_types_dot4_impl(extentions_types):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Successfully deployed GRAFANA",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
 
@@ -82,7 +82,7 @@ class extention_types_dot4_impl(extentions_types):
             d = {
                 "responseType": "ERROR",
                 "msg": monitoring[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -90,7 +90,7 @@ class extention_types_dot4_impl(extentions_types):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Successfully deployed promethus",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
 
@@ -99,7 +99,7 @@ class extention_types_dot4_impl(extentions_types):
         d = {
             "responseType": "SUCCESS",
             "msg": "Successfully deployed fluent bit logging",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
 
@@ -129,7 +129,7 @@ def generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, secret, 
         d = {
             "responseType": "ERROR",
             "msg": "Failed to extention yaml copy " + str(get_repo_state[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -141,7 +141,7 @@ def generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, secret, 
         d = {
             "responseType": "ERROR",
             "msg": "Failed to generate extension yaml copy " + str(generate_file_state[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -154,7 +154,7 @@ def generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, secret, 
         d = {
             "responseType": "ERROR",
             "msg": "Failed to copy extension yaml " + str(copy_state[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -176,7 +176,7 @@ def generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, secret, 
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to change cert " + str(state_harbor_change_host_password_cert[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     command = ["./common/injectValue.sh", yaml_file_name, "inject_ingress_fqdn", fqdn]
@@ -187,7 +187,7 @@ def generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, secret, 
     d = {
         "responseType": "SUCCESS",
         "msg": "Yaml file for extension deployment created",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -202,7 +202,7 @@ def monitoringDeployment(monitoringType):
                 d = {
                     "responseType": "ERROR",
                     "msg": pre[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             env = envCheck()
@@ -211,7 +211,7 @@ def monitoringDeployment(monitoringType):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Wrong env provided " + env[0],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             env = env[0]
@@ -220,7 +220,7 @@ def monitoringDeployment(monitoringType):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Tanzu observability is enabled, skipping prometheus and grafana deployment",
-                    "ERROR_CODE": 200
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
             if checkAirGappedIsEnabled(env):
@@ -238,7 +238,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "SUCCESS",
                         "msg": "Cluster " + listOfCluster + " is not deployed and not running",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 mgmt = getManagementCluster()
@@ -247,7 +247,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to get management cluster",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 if str(mgmt).strip() == listOfCluster.strip():
@@ -255,7 +255,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Currently " + monitoringType + " is not supported on management cluster",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 else:
@@ -265,7 +265,7 @@ def monitoringDeployment(monitoringType):
                         d = {
                             "responseType": "ERROR",
                             "msg": switch[0].json['msg'],
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                 load_bom = loadBomFile()
@@ -274,16 +274,17 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to load the bom data",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 repo = getRepo(env)
                 repository = repo[1]
                 os.system("chmod +x ./common/injectValue.sh")
+            cert_Path = ""
             if monitoringType == Tkg_Extention_names.PROMETHEUS:
                 password = None
                 extention = Tkg_Extention_names.PROMETHEUS
-                bom_map = getBomMap(load_bom, Tkg_Extention_names.PROMETHEUS)
+                #bom_map = getBomMap(load_bom, Tkg_Extention_names.PROMETHEUS)
                 appName = AppName.PROMETHUS
                 namespace = "package-tanzu-system-monitoring"
                 yamlFile = Paths.CLUSTER_PATH + cluster + "/prometheus-data-values.yaml"
@@ -294,7 +295,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": cert_ext_status[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 cert_Path = request.get_json(force=True)['tanzuExtensions']['monitoring'][
@@ -314,7 +315,7 @@ def monitoringDeployment(monitoringType):
                 command = ["./common/injectValue.sh", Extentions.GRAFANA_LOCATION + "/grafana-extension.yaml",
                            "fluent_bit", repository + "/" + Extentions.APP_EXTENTION]
                 runShellCommandAndReturnOutputAsList(command)
-                bom_map = getBomMap(load_bom, Tkg_Extention_names.GRAFANA)
+                #bom_map = getBomMap(load_bom, Tkg_Extention_names.GRAFANA)
                 cert_Path = request.get_json(force=True)['tanzuExtensions']['monitoring']['grafanaCertPath']
                 fqdn = request.get_json(force=True)['tanzuExtensions']['monitoring']['grafanaFqdn']
                 certKey_Path = request.get_json(force=True)['tanzuExtensions']['monitoring'][
@@ -332,7 +333,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Capture the available Prometheus version",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 file_status = generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, password, yamlFile)
@@ -341,7 +342,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": yamlFile + " generation failed " + str(file_status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
 
@@ -374,7 +375,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Extension is still not deployed " + str(count * 30),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 else:
@@ -382,7 +383,7 @@ def monitoringDeployment(monitoringType):
                     d = {
                         "responseType": "SUCCESS",
                         "msg": appName + " is deployed",
-                        "ERROR_CODE": 200
+                        "STATUS_CODE": 200
                     }
                     return jsonify(d), 200
             else:
@@ -390,7 +391,7 @@ def monitoringDeployment(monitoringType):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": appName + " is already running",
-                    "ERROR_CODE": 200
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
         else:
@@ -398,7 +399,7 @@ def monitoringDeployment(monitoringType):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Monitoring extension deployment is not enabled",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
@@ -406,7 +407,7 @@ def monitoringDeployment(monitoringType):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  deploy monitoring " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -421,7 +422,7 @@ def deploy_extension_fluent(fluent_bit_endpoint):
                 d = {
                     "responseType": "ERROR",
                     "msg": "Wrong env provided " + env[0],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             env = env[0]
@@ -433,7 +434,7 @@ def deploy_extension_fluent(fluent_bit_endpoint):
                     d = {
                         "responseType": "SUCCESS",
                         "msg": "Cluster " + listOfCluster + " is not deployed and not running",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 mgmt = getManagementCluster()
@@ -442,7 +443,7 @@ def deploy_extension_fluent(fluent_bit_endpoint):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to get management cluster",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 if str(mgmt).strip() == listOfCluster.strip():
@@ -451,7 +452,7 @@ def deploy_extension_fluent(fluent_bit_endpoint):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Currently fluent-bit " + fluent_bit_endpoint + " is not supported on management cluster",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 else:
@@ -461,7 +462,7 @@ def deploy_extension_fluent(fluent_bit_endpoint):
                         d = {
                             "responseType": "ERROR",
                             "msg": switch[0].json['msg'],
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                 response = deploy_fluent_bit(fluent_bit_endpoint, cluster)
@@ -470,14 +471,14 @@ def deploy_extension_fluent(fluent_bit_endpoint):
                     d = {
                         "responseType": "ERROR",
                         "msg": response[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             current_app.logger.info("Fluent-bit with endpoint - " + fluent_bit_endpoint + " installed successfully")
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Fluent-bit deployed successfully",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
         else:
@@ -485,7 +486,7 @@ def deploy_extension_fluent(fluent_bit_endpoint):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Fluent-bit is already deployed and its status is - " + is_already_installed[1],
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
@@ -493,6 +494,6 @@ def deploy_extension_fluent(fluent_bit_endpoint):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while deploying fluent-bit",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500

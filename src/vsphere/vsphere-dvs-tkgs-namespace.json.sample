@@ -90,7 +90,16 @@
             "tkgsWorkloadClusterGroupName":"",
             "tkgsWorkloadEnableDataProtection":"false",
             "tkgWorkloadClusterCredential":"",
-            "tkgWorkloadClusterBackupLocation":""
+            "tkgWorkloadClusterBackupLocation":"",
+            "tkgWorkloadClusterVeleroDataProtection":{
+               "enableVelero":"false",
+               "username": "",
+               "passwordBase64": "",
+               "bucketName": "",
+               "backupRegion": "",
+               "backupS3Url": "",
+               "backupPublicUrl": ""
+            }
          }
       },
           "tkgServiceConfig": {

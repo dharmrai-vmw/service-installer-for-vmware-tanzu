@@ -32,7 +32,7 @@ from common.common_utilities import preChecks, envCheck, getClusterStatusOnTanzu
     getCloudStatus, getSECloudStatus, createResourceFolderAndWait, validateNetworkAvailable, checkTmcEnabled, \
     deployCluster, registerWithTmcOnSharedAndWorkload, registerTanzuObservability, registerTSM, \
     downloadAndPushKubernetesOvaMarketPlace, getKubeVersionFullName, getNetworkPathTMC, checkDataProtectionEnabled, \
-    enable_data_protection, createClusterFolder
+    enable_data_protection, createClusterFolder, enable_data_protection_velero, checkDataProtectionEnabledVelero
 from common.operation.ShellHelper import runShellCommandAndReturnOutput, grabKubectlCommand, grabIpAddress, \
     verifyPodsAreRunning, grabPipeOutput, runShellCommandAndReturnOutputAsList, \
     runShellCommandAndReturnOutputAsListWithChangedDir, grabPipeOutputChagedDir, runShellCommandWithPolling
@@ -64,7 +64,7 @@ def workloadConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to Config shared cluster " + str(network_config[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     deploy_workload = deploy()
@@ -73,13 +73,13 @@ def workloadConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy extension " + str(deploy_workload[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Workload cluster configured Successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Workload cluster configured Successfully")
     return jsonify(d), 200
@@ -93,7 +93,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -102,7 +102,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -124,7 +124,7 @@ def networkConfig():
             d = {
                 "responseType": "ERROR",
                 "msg": down_status[1],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -152,7 +152,7 @@ def networkConfig():
             d = {
                 "responseType": "ERROR",
                 "msg": f"Failed to create segment: {SegmentsName.DISPLAY_NAME_TKG_WORKLOAD_DATA_SEGMENT} {e}",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             current_app.logger.error(
                 f"Failed to create segment: {SegmentsName.DISPLAY_NAME_TKG_WORKLOAD_DATA_SEGMENT} {e}")
@@ -168,7 +168,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     ip = ip[0]
@@ -178,7 +178,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     get_cloud = getCloudStatus(ip, csrf2, aviVersion, Cloud.CLOUD_NAME)
@@ -187,7 +187,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get cloud status " + str(get_cloud[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -197,7 +197,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Requested cloud is not created",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     else:
@@ -208,7 +208,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get vip network " + str(get_wip[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -222,7 +222,7 @@ def networkConfig():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create  vip network " + str(vip_net[1]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         wip_url = vip_net[0]
@@ -236,7 +236,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get se cloud status " + str(get_se_cloud[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -250,7 +250,7 @@ def networkConfig():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create  se cloud " + str(cloud_se[1]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         se_cloud_url = cloud_se[0]
@@ -262,7 +262,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ipam " + str(get_ipam[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     else:
@@ -273,7 +273,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get se Ipam Details  " + str(ipam[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     vm_state = checkVmPresent(vcenter_ip, vcenter_username, password, ControllerLocation.CONTROLLER_NAME)
@@ -282,7 +282,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Avi controller not found ",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     avi_uuid = vm_state.config.uuid
@@ -293,7 +293,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed update ipam" + str(new_cloud_status[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if not validateNetworkAvailable(SegmentsName.DISPLAY_NAME_TKG_WORKLOAD_DATA_SEGMENT, vcenter_ip, vcenter_username,
@@ -302,7 +302,7 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to find the network " + SegmentsName.DISPLAY_NAME_TKG_WORKLOAD_DATA_SEGMENT,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     dep = controllerDeployment(ip, csrf2, data_center, data_store, cluster_name, vcenter_ip, vcenter_username, password,
@@ -314,13 +314,13 @@ def networkConfig():
         d = {
             "responseType": "ERROR",
             "msg": "Controller deployment failed " + str(dep[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully configured workload cluster",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -382,7 +382,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -391,7 +391,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     json_dict = request.get_json(force=True)
@@ -437,7 +437,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": f"Failed to create segment: {SegmentsName.DISPLAY_NAME_TKG_WORKLOAD} {e}",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             current_app.logger.error(f"Failed to create segment: {SegmentsName.DISPLAY_NAME_TKG_WORKLOAD} {e}")
             return jsonify(d), 500
@@ -451,7 +451,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "No segments are created",
-            "ERROR_CODE": 404
+            "STATUS_CODE": 404
         }
         current_app.logger.error("No segments are created")
         return jsonify(d), 404
@@ -461,7 +461,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": SegmentsName.DISPLAY_NAME_TKG_WORKLOAD + " is not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(SegmentsName.DISPLAY_NAME_TKG_WORKLOAD + " is not created")
             return jsonify(d), 404
@@ -488,7 +488,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": avi_management_network_group_CGW_create.text,
-                "ERROR_CODE": avi_management_network_group_CGW_create.status_code
+                "STATUS_CODE": avi_management_network_group_CGW_create.status_code
             }
             current_app.logger.error(avi_management_network_group_CGW_create.text)
             return jsonify(
@@ -503,7 +503,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": tkg_management + " is not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(tkg_management + " is not created")
             return jsonify(d), 404
@@ -535,7 +535,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": tkg_management_network_mgw_create.text,
-                "ERROR_CODE": tkg_management_network_mgw_create.status_code
+                "STATUS_CODE": tkg_management_network_mgw_create.status_code
             }
             current_app.logger.error(tkg_management_network_mgw_create.text)
             return jsonify(d), tkg_management_network_mgw_create.status_code
@@ -547,7 +547,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "No segments are created",
-            "ERROR_CODE": 404
+            "STATUS_CODE": 404
         }
         current_app.logger.error("No segments are created")
         return jsonify(d), 404
@@ -556,7 +556,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "No groups are created",
-            "ERROR_CODE": 404
+            "STATUS_CODE": 404
         }
         current_app.logger.error("No groups are created")
         return jsonify(d), 404
@@ -578,7 +578,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": segmentsName + " segment/s is/are not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(segmentsName + " segment/s  is/are not created")
             return jsonify(d), 404
@@ -616,7 +616,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": groupsName + " group/s is/are not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(groupsName + " group/s is/are not created")
             return jsonify(d), 404
@@ -652,7 +652,7 @@ def deploy():
                                                                       "/infra/services/" + ServiceName.KUBE_VIP_SERVICE],
                                                          "scope": ["/infra/labels/cgw-all"]
                                                          }
-        elif Tkg_version.TKG_VERSION == "1.5":
+        elif Tkg_version.TKG_VERSION == "1.6":
             tkg_and_avi_to_dns_firewall_rule_cgw_body = {"action": "ALLOW",
                                                          "display_name": FirewallRuleCgw.DISPLAY_NAME_WORKLOAD_TKG_and_AVI_DNS,
                                                          "logged": False,
@@ -699,13 +699,13 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": tkg_and_avi_to_dns_create.text,
-                    "ERROR_CODE": tkg_and_avi_to_dns_create.status_code
+                    "STATUS_CODE": tkg_and_avi_to_dns_create.status_code
                 }
                 current_app.logger.error(tkg_and_avi_to_dns_create.text)
                 return jsonify(d), tkg_and_avi_to_dns_create.status_code
 
         current_app.logger.info("Created firewall rule " + FirewallRuleCgw.DISPLAY_NAME_WORKLOAD_TKG_and_AVI_DNS)
-    if Tkg_version.TKG_VERSION == "1.5":
+    if Tkg_version.TKG_VERSION == "1.6":
         if not NsxtClient.find_object(listOfFirewall, FirewallRuleCgw.DISPLAY_NAME_TKG_WORKLOAD_to_vCenter):
             isAllFirewallAlreadyCreated = False
             groupsName = ""
@@ -727,7 +727,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": segmentsName + " segment/s is/are not created",
-                    "ERROR_CODE": 404
+                    "STATUS_CODE": 404
                 }
                 current_app.logger.error(segmentsName + " segment/s  is/are not created")
                 return jsonify(d), 404
@@ -743,7 +743,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": groupsName + " group/s is/are not created",
-                    "ERROR_CODE": 404
+                    "STATUS_CODE": 404
                 }
                 current_app.logger.error(groupsName + " group/s is/are not created")
                 return jsonify(d), 404
@@ -776,7 +776,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": tkg_and_avi_to_dns_create.text,
-                    "ERROR_CODE": tkg_and_avi_to_dns_create.status_code
+                    "STATUS_CODE": tkg_and_avi_to_dns_create.status_code
                 }
                 current_app.logger.error(tkg_and_avi_to_dns_create.text)
                 return jsonify(d), tkg_and_avi_to_dns_create.status_code
@@ -797,7 +797,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": segmentsName + " segment/s is/are not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(segmentsName + " segment/s  is/are not created")
             return jsonify(d), 404
@@ -810,7 +810,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": groupsName + " group/s is/are not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(groupsName + " group/s is/are not created")
             return jsonify(d), 404
@@ -839,7 +839,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": tkg_and_avi_to_dns_create.text,
-                "ERROR_CODE": tkg_and_avi_to_dns_create.status_code
+                "STATUS_CODE": tkg_and_avi_to_dns_create.status_code
             }
             current_app.logger.error(tkg_and_avi_to_dns_create.text)
             return jsonify(d), tkg_and_avi_to_dns_create.status_code
@@ -852,7 +852,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "No groups are created on mgw",
-            "ERROR_CODE": 404
+            "STATUS_CODE": 404
         }
         current_app.logger.error("No groups are created")
         return jsonify(d), 404
@@ -871,7 +871,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": segmentsName + " segment/s is/are not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(segmentsName + " segment/s  is/are not created")
             return jsonify(d), 404
@@ -884,7 +884,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": groupsName + " group/s is/are not created",
-                "ERROR_CODE": 404
+                "STATUS_CODE": 404
             }
             current_app.logger.error(groupsName + " group/s is/are not created")
             return jsonify(d), 404
@@ -912,7 +912,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": tkg_and_avi_to_dns_create.text,
-                "ERROR_CODE": tkg_and_avi_to_dns_create.status_code
+                "STATUS_CODE": tkg_and_avi_to_dns_create.status_code
             }
             current_app.logger.error(tkg_and_avi_to_dns_create.text)
             return jsonify(d), tkg_and_avi_to_dns_create.status_code
@@ -925,7 +925,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     ip = ip[0]
@@ -935,7 +935,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     count = 0
@@ -959,7 +959,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Controller 3 is not up ",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     count = 0
@@ -983,7 +983,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Controller 4 is not up ",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     urlFromServiceEngine1 = listAllServiceEngine(ip, csrf2, 3, seIp3, aviVersion)
@@ -992,7 +992,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get service engine details " + str(urlFromServiceEngine1[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     urlFromServiceEngine2 = listAllServiceEngine(ip, csrf2, 3, seIp4, aviVersion)
@@ -1001,7 +1001,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get service engine details " + str(urlFromServiceEngine2[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     details1 = getDetailsOfServiceEngine(ip, csrf2, urlFromServiceEngine1[0], "detailsOfServiceEngine3.json",
@@ -1011,7 +1011,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get details of engine 3" + str(details1[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     details2 = getDetailsOfServiceEngine(ip, csrf2, urlFromServiceEngine2[0], "detailsOfServiceEngine4.json",
@@ -1021,7 +1021,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  get details of engine 4 " + str(details2[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     get_se_cloud = getSECloudStatus(ip, csrf2, aviVersion, Cloud.SE_WORKLOAD_GROUP_NAME)
@@ -1030,7 +1030,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get se cloud status " + str(get_se_cloud[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1040,7 +1040,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create  get se cloud " + str(get_se_cloud[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     else:
@@ -1050,7 +1050,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to find the network " + SegmentsName.DISPLAY_NAME_TKG_WORKLOAD,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     change = changeNetworks(vcenter_ip, vcenter_username, password, ControllerLocation.CONTROLLER_SE_WORKLOAD_NAME)
@@ -1059,7 +1059,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed changeNetwork " + str(change[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1073,7 +1073,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  change set interfaces engine 3" + str(se_engines[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     change = changeNetworks(vcenter_ip, vcenter_username, password, ControllerLocation.CONTROLLER_SE_WORKLOAD_NAME2)
@@ -1082,7 +1082,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed changeNetwork se controller 4 " + str(change[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     se_engines = changeSeGroupAndSetInterfaces(ip, csrf2, urlFromServiceEngine2[0], se_cloud_url,
@@ -1095,7 +1095,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  change set interfaces engine 4" + str(se_engines[1]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     parent_resourcepool = current_app.config['RESOURCE_POOL']
@@ -1107,7 +1107,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(create[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     try:
@@ -1118,7 +1118,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to ssh key from config file " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     podRunninng = ["tanzu", "cluster", "list"]
@@ -1128,7 +1128,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to run command to check status of pods",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     deployWorkload = False
@@ -1163,7 +1163,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Provided cluster size: " + size + "is not supported, please provide one of: small/medium/large/extra-large/custom",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     pod_cidr = request.get_json(force=True)['componentSpec']['tkgWorkloadSpec']['tkgWorkloadClusterCidr']
@@ -1185,7 +1185,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create directory: " + Paths.CLUSTER_PATH + workload_cluster_name,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info(
@@ -1205,7 +1205,7 @@ def deploy():
                                  memory, "--worker-node-count", machineCount, "--worker-cpu", cpu, "--worker-disk-gib",
                                  disk,
                                  "--worker-memory-mib", memory]
-    if Tkg_version.TKG_VERSION == "1.5":
+    if Tkg_version.TKG_VERSION == "1.6":
         commands = ["tanzu", "management-cluster", "kubeconfig", "get", management_cluster, "--admin"]
         kubeContextCommand = grabKubectlCommand(commands, RegexPattern.SWITCH_CONTEXT_KUBECTL)
         if kubeContextCommand is None:
@@ -1213,7 +1213,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to management cluster context command",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -1223,7 +1223,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         version_status = getKubeVersionFullName(kubernetes_ova_version)
@@ -1232,7 +1232,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Kubernetes OVA Version is not found for Shared Service Cluster",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -1276,7 +1276,7 @@ def deploy():
     isCheck = False
     found = False
     if command_status[0] is None:
-        if Tkg_version.TKG_VERSION == "1.5" and checkTmcEnabled(env):
+        if Tkg_version.TKG_VERSION == "1.6" and checkTmcEnabled(env):
             current_app.logger.info("Deploying shared cluster")
             for i in tqdm(range(150), desc="Waiting for folder to be available in tmc…", ascii=False, ncols=75):
                 time.sleep(1)
@@ -1287,7 +1287,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to run command to create workload cluster " + str(command_status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -1295,13 +1295,22 @@ def deploy():
                 deployWorkload = True
     else:
         if not verifyPodsAreRunning(workload_cluster_name, command_status[0], RegexPattern.running):
-            wip = getVipNetworkIpNetMask(ip, csrf2, aviVersion)
+            wip = getVipNetworkIpNetMask(ip, csrf2, aviVersion, Cloud.WIP_WORKLOAD_NETWORK_NAME)
             if wip[0] is None or wip[0] == "NOT_FOUND":
                 current_app.logger.error("Failed to get wip netmask ")
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get wip netmask ",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            tkg_cluster_vip_netmask = getVipNetworkIpNetMask(ip, csrf2, aviVersion, Cloud.WIP_CLUSTER_NETWORK_NAME)
+            if tkg_cluster_vip_netmask[0] is None or tkg_cluster_vip_netmask[0] == "NOT_FOUND":
+                current_app.logger.error("Failed to get Cluster VIP netmask")
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get Cluster VIP netmask",
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             createAkoFile(ip, wip[0], workload_cluster_name)
@@ -1312,7 +1321,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to management cluster context command",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -1322,7 +1331,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfCommand = ["kubectl", "apply", "-f", Paths.CLUSTER_PATH + workload_cluster_name + '/ako_workloadset1.yaml', "--validate=false"]
@@ -1333,7 +1342,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to apply ako label " + str(status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             isCheck = True
@@ -1349,7 +1358,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to deploy cluster " + deploy_status[1],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -1367,7 +1376,7 @@ def deploy():
                             d = {
                                 "responseType": "ERROR",
                                 "msg": "Failed to run command to create workload cluster " + str(command_status_v[0]),
-                                "ERROR_CODE": 500
+                                "STATUS_CODE": 500
                             }
                             return jsonify(d), 500
                 # else:
@@ -1382,7 +1391,7 @@ def deploy():
                 #         d = {
                 #             "responseType": "ERROR",
                 #             "msg": "Failed to deploy cluster " + deploy_status[1],
-                #             "ERROR_CODE": 500
+                #             "STATUS_CODE": 500
                 #         }
                 #         return jsonify(d), 500
         else:
@@ -1397,7 +1406,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to check pods are running " + str(command_status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         if verifyPodsAreRunning(AppName.AKO, command_status[0], RegexPattern.RUNNING):
@@ -1411,7 +1420,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to check pods are running " + str(command_status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             if verifyPodsAreRunning(workload_cluster_name, command_status[0], RegexPattern.running):
@@ -1425,7 +1434,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": workload_cluster_name + " is not running on waiting " + str(count * 30) + "s",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -1436,7 +1445,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context command",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -1446,7 +1455,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context " + str(status[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     lisOfCommand = ["kubectl", "label", "cluster",
@@ -1458,7 +1467,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to apply ako label " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -1484,7 +1493,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "AKO pods are not running on waiting for 10m " + str(command_status_ako[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     # if command_status_ako[1] != 0:
@@ -1492,7 +1501,7 @@ def deploy():
     #     d = {
     #         "responseType": "ERROR",
     #         "msg": "Failed to check pods are running " + command_status_ako[0],
-    #         "ERROR_CODE": 500
+    #         "STATUS_CODE": 500
     #     }
     #     return jsonify(d), 500
     while not verifyPodsAreRunning(AppName.AKO, command_status_ako[0], RegexPattern.RUNNING) and count_ako < 60:
@@ -1502,7 +1511,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to check pods are running " + str(command_status_ako[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         if verifyPodsAreRunning(AppName.AKO, command_status[0], RegexPattern.RUNNING):
@@ -1515,7 +1524,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Ako pods are not running on waiting " + str(count_ako * 30),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if not deployWorkload:
@@ -1529,7 +1538,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Switching context to workload failed " + connectToWorkload[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Switched to the workload context")
@@ -1541,7 +1550,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": check_pinniped[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         cluster_admin_users = \
@@ -1564,7 +1573,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": rbac_user_status[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Successfully created RBAC for all the provided users")
@@ -1578,10 +1587,10 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": state[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
-    elif checkTmcEnabled(env) and Tkg_version.TKG_VERSION == "1.5":
+    elif checkTmcEnabled(env) and Tkg_version.TKG_VERSION == "1.6":
         current_app.logger.info("Cluster is already deployed via TMC")
         if checkDataProtectionEnabled(env, "workload"):
             is_enabled = enable_data_protection(env, workload_cluster_name, management_cluster)
@@ -1590,14 +1599,51 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": is_enabled[1],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info(is_enabled[1])
     elif checkTmcEnabled(env):
         current_app.logger.info("Cluster is already deployed via TMC")
     else:
-        current_app.logger.info("TMC is disabled")
+        current_app.logger.info("TMC is deactivated")
+        current_app.logger.info("Check whether data protection is to be enabled via Velero on Workload Cluster")
+        if checkDataProtectionEnabledVelero(env, "workload"):
+            commands_workload = ["tanzu", "cluster", "kubeconfig", "get", workload_cluster_name, "--admin"]
+            kubeContextCommand_workload = grabKubectlCommand(commands_workload, RegexPattern.SWITCH_CONTEXT_KUBECTL)
+            if kubeContextCommand_workload is None:
+                current_app.logger.error("Failed to get switch to workload cluster context command")
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get switch to workload cluster context command",
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            lisOfSwitchContextCommand_workload = str(kubeContextCommand_workload).split(" ")
+            status = runShellCommandAndReturnOutputAsList(lisOfSwitchContextCommand_workload)
+            if status[1] != 0:
+                current_app.logger.error("Failed to get switch to workload cluster context " + str(status[0]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get switch to workload cluster context " + str(status[0]),
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            current_app.logger.info("Switched to " + workload_cluster_name + " context")
+            is_enabled = enable_data_protection_velero("workload", env)
+            if not is_enabled[0]:
+                current_app.logger.error("ERROR: Failed to enable data protection via velero on Workload Cluster")
+                current_app.logger.error(is_enabled[1])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": is_enabled[1],
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            current_app.logger.info("Successfully enabled data protection via Velero on Workload Cluster")
+            current_app.logger.info(is_enabled[1])
+        else:
+            current_app.logger.info("Data protection via Velero setting is not active for Workload Cluster")
     to = registerTanzuObservability(workload_cluster_name, env, size)
     if to[1] != 200:
         current_app.logger.error(to[0].json['msg'])
@@ -1609,7 +1655,7 @@ def deploy():
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully deployed  cluster " + workload_cluster_name,
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1621,7 +1667,7 @@ def waitForGrepProcess(list1, list2, podName, dir):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to apply " + podName + " " + cert_state[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, 0
     count_cert = 0
@@ -1635,19 +1681,19 @@ def waitForGrepProcess(list1, list2, podName, dir):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, count_cert
     d = {
         "responseType": "ERROR",
         "msg": "Failed to apply " + podName + " " + cert_state[0],
-        "ERROR_CODE": 500
+        "STATUS_CODE": 500
     }
 
     return jsonify(d), 200, count_cert
 
 
-def getVipNetworkIpNetMask(ip, csrf2, aviVersion):
+def getVipNetworkIpNetMask(ip, csrf2, aviVersion, networkName):
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
@@ -1664,7 +1710,7 @@ def getVipNetworkIpNetMask(ip, csrf2, aviVersion):
             return None, response_csrf.text
         else:
             for re in response_csrf.json()["results"]:
-                if re['name'] == Cloud.WIP_WORKLOAD_NETWORK_NAME:
+                if re['name'] == networkName:
                     for sub in re["configured_subnets"]:
                         return str(sub["prefix"]["ip_addr"]["addr"]) + "/" + str(sub["prefix"]["mask"]), "SUCCESS"
             else:
@@ -1672,7 +1718,7 @@ def getVipNetworkIpNetMask(ip, csrf2, aviVersion):
                 while len(next_url) > 0:
                     response_csrf = requests.request("GET", next_url, headers=headers, data=body, verify=False)
                     for re in response_csrf.json()["results"]:
-                        if re['name'] == Cloud.WIP_WORKLOAD_NETWORK_NAME:
+                        if re['name'] == networkName:
                             for sub in re["configured_subnets"]:
                                 return str(sub["prefix"]["ip_addr"]["addr"]) + "/" + str(
                                     sub["prefix"]["mask"]), "SUCCESS"
@@ -1683,13 +1729,15 @@ def getVipNetworkIpNetMask(ip, csrf2, aviVersion):
         return "NOT_FOUND", "FAILED"
 
 
-def createAkoFile(ip, wipCidr, clusterName):
+def createAkoFile(ip, wipCidr, clusterName, tkgClusterVipCidr, tkgClusterVipPg):
+    workloadNetworkName = dict(networkName=SegmentsName.DISPLAY_NAME_TKG_WORKLOAD)
+    lis_ = [workloadNetworkName]
     data = dict(
         apiVersion='networking.tkg.tanzu.vmware.com/v1alpha1',
         kind='AKODeploymentConfig',
         metadata=dict(
             finalizers=['ako-operator.networking.tkg.tanzu.vmware.com'],
-            generation=1,
+            generation=2,
             name='install-ako-for-workload-set01'
         ),
         spec=dict(
@@ -1707,8 +1755,12 @@ def createAkoFile(ip, wipCidr, clusterName):
                 )
             ),
             controller=ip,
+            controlPlaneNetwork=dict(cidr=tkgClusterVipCidr, name=tkgClusterVipPg),
             dataNetwork=dict(cidr=wipCidr, name=Cloud.WIP_WORKLOAD_NETWORK_NAME),
-            extraConfigs=dict(ingress=dict(defaultIngressController=False, disableIngressClass=True)),
+            extraConfigs=dict(
+                cniPlugin="antrea",
+                disableStaticRouteSync=True,
+                ingress=dict(defaultIngressController=False, disableIngressClass=True, nodeNetworkList=lis_)),
             serviceEngineGroup=Cloud.SE_WORKLOAD_GROUP_NAME
         )
     )
@@ -1732,7 +1784,7 @@ def connectToWorkLoadCluster(env):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to workload cluster context command",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -1742,13 +1794,13 @@ def connectToWorkLoadCluster(env):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to switch to workload cluster context " + str(status[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Switch to workload cluster context ",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -1776,7 +1828,7 @@ def waitForProcess(list1, podName):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to apply " + podName + " " + cert_state[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, 0
     count_cert = 0
@@ -1790,12 +1842,12 @@ def waitForProcess(list1, podName):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, count_cert
     d = {
         "responseType": "ERROR",
         "msg": "Failed to apply " + podName + " " + cert_state[0],
-        "ERROR_CODE": 500
+        "STATUS_CODE": 500
     }
     return jsonify(d), 200, count_cert

@@ -29,7 +29,8 @@ from common.common_utilities import preChecks, installCertManagerAndContour, env
     registerTanzuObservability, registerTSM, downloadAndPushKubernetesOvaMarketPlace, \
     registerTanzuObservability, getNetworkPathTMC, getKubeVersionFullName, checkDataProtectionEnabled, \
     enable_data_protection, checkEnableIdentityManagement, checkPinnipedInstalled, createRbacUsers, \
-    obtain_second_csrf, createClusterFolder
+    obtain_second_csrf, createClusterFolder, enable_data_protection_velero, checkDataProtectionEnabledVelero, \
+    copy_harbor_cert_to_ytt_config, isEnvTkgm
 from common.model.vmcSpec import VmcMasterSpec
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -43,7 +44,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -56,7 +57,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context command",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -67,7 +68,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context " + str(status[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -91,7 +92,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "AKO pods are not running on waiting for 10m " + str(command_status_ako[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     data_center = current_app.config['VC_DATACENTER']
@@ -102,7 +103,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     ip = ip[0]
@@ -120,16 +121,17 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to delete an already present AKO Deployment config",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
+    ##// MGMT DATA
     csrf2 = obtain_second_csrf(ip, env)
     if csrf2 is None:
         current_app.logger.error("Failed to get csrf from new set password")
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     aviVersion = get_avi_version(env)
@@ -139,7 +141,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get TKG Management Data netmask",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     tkg_cluster_vip_netmask = getVipNetworkIpNetMask(ip, csrf2, aviVersion, Cloud.WIP_CLUSTER_NETWORK_NAME)
@@ -148,11 +150,12 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get Cluster VIP netmask",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Creating AkoDeploymentConfig for shared services cluster...")
-    createAkoFile(ip, shared_cluster_name, tkg_mgmt_data_netmask[0], Cloud.WIP_NETWORK_NAME)
+    createAkoFile(ip, shared_cluster_name, tkg_mgmt_data_netmask[0], Cloud.WIP_NETWORK_NAME, tkg_cluster_vip_netmask[0],
+                  Cloud.WIP_CLUSTER_NETWORK_NAME, SegmentsName.DISPLAY_NAME_TKG_SharedService_Segment)
     yaml_file_path = Paths.CLUSTER_PATH + shared_cluster_name + "/tkgvmc-ako-shared-services-cluster.yaml"
     listOfCommand = ["kubectl", "create", "-f", yaml_file_path]
     status = runShellCommandAndReturnOutputAsList(listOfCommand)
@@ -162,27 +165,29 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create new AkoDeploymentConfig " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     current_app.logger.info("Successfully created a new AkoDeploymentConfig for shared services cluster")
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully validated running status for AKO",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
 
-def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg):
+def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg, tkgClusterVipCidr, tkgClusterVipPg, sharedNetworkName):
     repository = 'projects.registry.vmware.com/tkg/ako'
+    sharedNetworkName = dict(networkName=sharedNetworkName)
+    lis_ = [sharedNetworkName]
     data = dict(
         apiVersion='networking.tkg.tanzu.vmware.com/v1alpha1',
         kind='AKODeploymentConfig',
         metadata=dict(
             finalizers=['ako-operator.networking.tkg.tanzu.vmware.com'],
-            generation=1,
-            name='install-ako-for-shared-services-cluster'
+            generation=2,
+            name='install-ako-for-shared-services-cluster',
         ),
         spec=dict(
             adminCredentialRef=dict(
@@ -199,12 +204,16 @@ def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg):
                 )
             ),
             controller=ip,
+            controlPlaneNetwork=dict(cidr=tkgClusterVipCidr, name=tkgClusterVipPg),
             dataNetwork=dict(cidr=tkgMgmtDataVipCidr, name=tkgMgmtDataPg),
-            extraConfigs=dict(ingress=dict(defaultIngressController=False, disableIngressClass=True)),
+            extraConfigs=dict(
+                cniPlugin="antrea",
+                disableStaticRouteSync=True,
+                ingress=dict(defaultIngressController=False, disableIngressClass=True, nodeNetworkList=lis_)),
             serviceEngineGroup=Cloud.SE_GROUP_NAME
         )
     )
-    with open(Paths.CLUSTER_PATH +shared_cluster_name+'/tkgvmc-ako-shared-services-cluster.yaml', 'w') as outfile:
+    with open(Paths.CLUSTER_PATH + shared_cluster_name + '/tkgvmc-ako-shared-services-cluster.yaml', 'w') as outfile:
         yaml = ruamel.yaml.YAML()
         yaml.indent(mapping=2, sequence=4, offset=3)
         yaml.dump(data, outfile)
@@ -254,7 +263,7 @@ def configSharedCluster():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to Config shared cluster " + str(deploy_shared[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     deploy_extention = deployExtentions()
@@ -263,13 +272,13 @@ def configSharedCluster():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy extension " + str(deploy_extention[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Shared cluster configured Successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Shared cluster configured Successfully")
     return jsonify(d), 200
@@ -287,7 +296,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": msg,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -296,7 +305,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     json_dict = request.get_json(force=True)
@@ -328,7 +337,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": down_status[1],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -346,7 +355,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     try:
@@ -360,7 +369,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create folder " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, str(e)
     management_cluster = vmcSpec.componentSpec.tkgMgmtSpec.tkgMgmtClusterName
@@ -372,7 +381,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to ssh key from config file " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     podRunninng = ["tanzu", "cluster", "list"]
@@ -382,7 +391,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to run command to check status of pods",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     shared_cluster_name = vmcSpec.componentSpec.tkgSharedServiceSpec.tkgSharedClusterName
@@ -405,7 +414,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Provided cluster size: " + size + "is not supported, please provide one of: small/medium/large/extra-large/custom",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if size.lower() == "small":
@@ -434,7 +443,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Provided cluster size: " + size + "is not supported, please provide one of: small/medium/large/extra-large/custom",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     pod_cidr = request.get_json(force=True)['componentSpec']['tkgSharedServiceSpec']['tkgSharedserviceClusterCidr']
@@ -452,7 +461,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create directory: " + Paths.CLUSTER_PATH + shared_cluster_name,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("The config files for shared services cluster will be located at: " + Paths.CLUSTER_PATH + shared_cluster_name)
@@ -470,7 +479,7 @@ def deploy():
                                memory, "--worker-node-count", machineCount, "--worker-cpu", cpu, "--worker-disk-gib",
                                disk,
                                "--worker-memory-mib", memory]
-    if Tkg_version.TKG_VERSION == "1.5":
+    if Tkg_version.TKG_VERSION == "1.6":
         commands = ["tanzu", "management-cluster", "kubeconfig", "get", management_cluster, "--admin"]
         kubeContextCommand = grabKubectlCommand(commands, RegexPattern.SWITCH_CONTEXT_KUBECTL)
         if kubeContextCommand is None:
@@ -478,7 +487,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to management cluster context command",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -488,7 +497,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         version_status = getKubeVersionFullName(kubernetes_ova_version)
@@ -497,7 +506,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Kubernetes OVA Version is not found for Shared Service Cluster",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -535,7 +544,7 @@ def deploy():
 
     isCheck = False
     if command_status[0] is None:
-        if Tkg_version.TKG_VERSION == "1.5" and checkTmcEnabled(env):
+        if Tkg_version.TKG_VERSION == "1.6" and checkTmcEnabled(env):
             current_app.logger.info("Creating AkoDeploymentConfig for shared services cluster")
             ako_deployment_config_status = akoDeploymentConfigSharedCluster(shared_cluster_name)
             if ako_deployment_config_status[1] != 200:
@@ -543,7 +552,7 @@ def deploy():
                 d = {
                     "responseType": "SUCCESS",
                     "msg": ako_deployment_config_status[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Deploying shared cluster...")
@@ -553,7 +562,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to run command to create shared cluster " + str(command_status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -569,7 +578,7 @@ def deploy():
                     d = {
                         "responseType": "SUCCESS",
                         "msg": ako_deployment_config_status[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Deploying shared cluster using tanzu 1.5")
@@ -583,7 +592,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to deploy cluster " + deploy_status[1],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -595,7 +604,7 @@ def deploy():
                         d = {
                             "responseType": "SUCCESS",
                             "msg": ako_deployment_config_status[0].json['msg'],
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info("Deploying shared cluster, after verification using tmc")
@@ -617,7 +626,7 @@ def deploy():
                                 d = {
                                     "responseType": "ERROR",
                                     "msg": "Failed to run command to create shared cluster " + str(command_status_v[0]),
-                                    "ERROR_CODE": 500
+                                    "STATUS_CODE": 500
                                 }
                                 return jsonify(d), 500
                 # else:
@@ -632,7 +641,7 @@ def deploy():
                 #         d = {
                 #             "responseType": "ERROR",
                 #             "msg": "Failed to deploy cluster " + deploy_status[1],
-                #             "ERROR_CODE": 500
+                #             "STATUS_CODE": 500
                 #         }
                 #         return jsonify(d), 500
 
@@ -645,7 +654,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to check pods are running " + str(command_status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 while not verifyPodsAreRunning(shared_cluster_name, command_status[0],
@@ -656,7 +665,7 @@ def deploy():
                         d = {
                             "responseType": "ERROR",
                             "msg": "Failed to check pods are running " + str(command_status[0]),
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                     count = count + 1
@@ -667,7 +676,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": shared_cluster_name + " is not running on waiting " + str(count * 30) + "s",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             commands = ["tanzu", "management-cluster", "kubeconfig", "get", management_cluster, "--admin"]
@@ -677,7 +686,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to management cluster context command",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -687,7 +696,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfCommand = ["kubectl", "label", "cluster.cluster.x-k8s.io/" + shared_cluster_name,
@@ -698,7 +707,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply k8s label " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfCommand = ["kubectl", "label", "cluster",
@@ -710,7 +719,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to apply ako label " + str(status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -722,7 +731,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to shared cluster context command",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -732,7 +741,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to shared cluster context " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Switched to " + shared_cluster_name + " context")
@@ -744,7 +753,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": check_pinniped[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 cluster_admin_users = \
@@ -767,7 +776,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": rbac_user_status[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Successfully created RBAC for all the provided users")
@@ -795,7 +804,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "AKO pods are not running on waiting for 10m " + str(command_status_ako[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             found = False
@@ -808,7 +817,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to check pods are running " + str(command_status_ako[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 if verifyPodsAreRunning(AppName.AKO, command_status[0], RegexPattern.RUNNING):
@@ -822,7 +831,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Ako pods are not running on waiting " + str(count_ako * 30),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             if count_ako > 30:
@@ -837,10 +846,10 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": state[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
-        elif checkTmcEnabled(env) and Tkg_version.TKG_VERSION == "1.5":
+        elif checkTmcEnabled(env) and Tkg_version.TKG_VERSION == "1.6":
             current_app.logger.info("Cluster is already deployed via TMC")
             if checkDataProtectionEnabled(env, "shared"):
                 is_enabled = enable_data_protection(env, shared_cluster_name, management_cluster)
@@ -849,14 +858,51 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": is_enabled[1],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info(is_enabled[1])
         elif checkTmcEnabled(env):
             current_app.logger.info("Cluster is already deployed via TMC")
         else:
-            current_app.logger.info("TMC is disabled")
+            current_app.logger.info("TMC is deactivated")
+            current_app.logger.info("Check whether data protection is to be enabled via Velero")
+            if checkDataProtectionEnabledVelero(env, "shared"):
+                commands_shared = ["tanzu", "cluster", "kubeconfig", "get", shared_cluster_name, "--admin"]
+                kubeContextCommand_shared = grabKubectlCommand(commands_shared, RegexPattern.SWITCH_CONTEXT_KUBECTL)
+                if kubeContextCommand_shared is None:
+                    current_app.logger.error("Failed to get switch to shared cluster context command")
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": "Failed to get switch to shared cluster context command",
+                        "STATUS_CODE": 500
+                    }
+                    return jsonify(d), 500
+                lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
+                status = runShellCommandAndReturnOutputAsList(lisOfSwitchContextCommand_shared)
+                if status[1] != 0:
+                    current_app.logger.error("Failed to get switch to shared cluster context " + str(status[0]))
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": "Failed to get switch to shared cluster context " + str(status[0]),
+                        "STATUS_CODE": 500
+                    }
+                    return jsonify(d), 500
+                current_app.logger.info("Switched to " + shared_cluster_name + " context")
+                is_enabled = enable_data_protection_velero("shared", env)
+                if not is_enabled[0]:
+                    current_app.logger.error("ERROR: Failed to enable data protection via velero")
+                    current_app.logger.error(is_enabled[1])
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": is_enabled[1],
+                        "STATUS_CODE": 500
+                    }
+                    return jsonify(d), 500
+                current_app.logger.info("Successfully enabled data protection via Velero")
+                current_app.logger.info(is_enabled[1])
+            else:
+                current_app.logger.info("Data protection via Velero setting is not active")
         to = registerTanzuObservability(shared_cluster_name, env, size)
         if to[1] != 200:
             current_app.logger.error(to[0])
@@ -864,7 +910,7 @@ def deploy():
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully deployed Shared cluster",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -878,7 +924,7 @@ def deployExtentions():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -887,7 +933,7 @@ def deployExtentions():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -939,7 +985,7 @@ def deployExtentions():
         d = {
             "responseType": "ERROR",
             "msg": cert_ext_status[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -952,7 +998,7 @@ def deployExtentions():
             d = {
                 "responseType": "ERROR",
                 "msg": "Harbor FQDN and password are mandatory for harbor deployment. Please provide both the details",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Validate harbor is running")
@@ -963,24 +1009,35 @@ def deployExtentions():
                 d = {
                     "responseType": "ERROR",
                     "msg": state[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
-        if Tkg_version.TKG_VERSION == "1.5":
+        if Tkg_version.TKG_VERSION == "1.6":
             state = installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, harborPassword, host, shared_cluster_name)
             if state[1] != 200:
                 current_app.logger.error(state[0].json['msg'])
                 d = {
                     "responseType": "ERROR",
                     "msg": state[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
+            # apply custom certificates in ytt config with TKGm
+            if isEnvTkgm(env):
+                status = copy_harbor_cert_to_ytt_config()
+                if not status[0]:
+                    current_app.logger.error("error in copying certificates from harbor " + str(status[1]))
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": "error in copying certificates from harbor " + str(status[1]),
+                        "STATUS_CODE": 500
+                    }
+                    return jsonify(d), 500
     current_app.logger.info("Configured all extensions successfully")
     d = {
         "responseType": "SUCCESS",
         "msg": "Configured all extensions successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -994,7 +1051,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to run validate command " + str(validate_harbor[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -1016,7 +1073,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed copy harbor data file  " + str(state_harbor_copy[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         command = ["./common/injectValue.sh", Extentions.HARBOR_LOCATION + "/harbor-data-values.yaml", "data_values_harbor", repo_address + "harbor"]
@@ -1031,7 +1088,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed apply name space role " + str(state_harbor_name_space_apply[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         command_harbor_genrate_psswd = ["sh", "./generate-passwords.sh", Paths.CLUSTER_PATH + clusterName + "/harbor-data-values.yaml"]
@@ -1042,7 +1099,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to generate password " + str(state_harbor_genrate_psswd[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         cer = certChanging(harborCertPath, harborCertKeyPath, harborPassword, host, clusterName)
@@ -1051,7 +1108,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": cer[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
 
@@ -1067,7 +1124,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create secret " + str(state_harbor_create_secret[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         change_repo_harbor = ["sh", "./common/injectValue.sh",
@@ -1079,7 +1136,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to change harbor repo " + str(state_change_repo_harbor[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         state_harbor_apply = deployExtention("harbor-extension.yaml", AppName.HARBOR, "tanzu-system-registry",
@@ -1089,7 +1146,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": str(state_harbor_apply[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -1098,7 +1155,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Harbor deployed, and is up and running",
-                    "ERROR_CODE": 200
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
     else:
@@ -1107,7 +1164,7 @@ def installHarbor13(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Harbor is already up and running",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
 
@@ -1143,7 +1200,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Contour is not running ",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         if not verify_cert_manager:
@@ -1151,7 +1208,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Cert manager is not running ",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         state = getVersionOfPackage("harbor.tanzu.vmware.com")
@@ -1159,7 +1216,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get Version of package contour.tanzu.vmware.com",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Deploying harbor")
@@ -1174,7 +1231,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get harbor image url " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Got harbor url " + str(status[0][0]).replace("'", ""))
@@ -1185,7 +1242,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get harbor image url " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         os.system("rm -rf " + Paths.CLUSTER_PATH + clusterName + "/harbor-data-values.yaml")
@@ -1198,7 +1255,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to generate password " + str(state_harbor_genrate_psswd[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         cer = certChanging(harborCertPath, harborCertKeyPath, harborPassword, host, clusterName)
@@ -1207,7 +1264,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": cer[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         os.system("chmod +x common/injectValue.sh")
@@ -1227,7 +1284,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create secrets " + str(apply_state[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info(apply_state[0])
@@ -1239,7 +1296,7 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             #d = {
                 #"responseType": "ERROR",
                 #"msg": "Failed to apply patch " + str(patch_status[0]),
-                #"ERROR_CODE": 500
+                #"STATUS_CODE": 500
             #}
             #return jsonify(d), 500
         #else:
@@ -1251,14 +1308,14 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
             d = {
                 "responseType": "ERROR",
                 "msg": state[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Deployed harbor successfully")
         d = {
             "responseType": "SUCCESS",
             "msg": "Deployed harbor successfully",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
     else:
@@ -1266,14 +1323,14 @@ def installHarbor14(service, repo_address, harborCertPath, harborCertKeyPath, ha
         d = {
             "responseType": "SUCCESS",
             "msg": "Harbor is already deployed and running",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
 
 
 def certChanging(harborCertPath, harborCertKeyPath, harborPassword, host, clusterName):
     os.system("chmod +x common/inject.sh")
-    if Tkg_version.TKG_VERSION == "1.5":
+    if Tkg_version.TKG_VERSION == "1.6":
         location = Paths.CLUSTER_PATH + clusterName + "/harbor-data-values.yaml"
     if Tkg_version.TKG_VERSION == "1.3":
         location = Extentions.HARBOR_LOCATION + "/harbor-data-values.yaml"
@@ -1291,7 +1348,7 @@ def certChanging(harborCertPath, harborCertKeyPath, harborPassword, host, cluste
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to change host, password and cert " + str(state_harbor_change_host_password_cert[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     else:
@@ -1304,12 +1361,12 @@ def certChanging(harborCertPath, harborCertKeyPath, harborPassword, host, cluste
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to change host, password and cert " + str(state_harbor_change_host_password_cert[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Updated harbor data-values yaml",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200

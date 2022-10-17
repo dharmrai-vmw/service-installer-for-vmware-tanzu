@@ -6,7 +6,7 @@ This deployment uses Tanzu Kubernetes Grid Service and references the design pro
 ## Network Design
 The following diagram represents the network design required for installing and running Service Installer for VMware Tanzu on vSphere with Tanzu and vSphere Distributed Switch (VDS).
 
-![TKGS Network Layout](./images/TKGS_Network_Layout.png)
+![Network design for TKO deployment on vSphere with Tanzu and VDS](./images/TKGS_Network_Layout.png)
 
 ## Prerequisites
 Before you deploy Tanzu for Kubernetes Operations using Service Installer for VMware Tanzu, ensure the following:
@@ -22,10 +22,29 @@ Before you deploy Tanzu for Kubernetes Operations using Service Installer for VM
 - To allow Service Installer to automatically download NSX Advanced Load Balancer Controller from VMware Marketplace,
 
    - A Cloud Services Portal API token is required to pull all required images from VMware Marketplace. To generate an API token, log in to the CSP portal and select your organization. Go to **Marketplace Service > My Account > API Tokens > Generate a Token**.
-   - If Marketplace is not available in the environment,
+- If Marketplace is not available in the environment:
 
-        1. Download the NSX Advanced Load Balancer OVA from [VMware Vault](https://vault.vmware.com/group/nsx/avi-networks-technical-resources).
-        2. Create a Content Library and upload NSX Advanced Load Balancer Controller OVA (20.1.6 for vSphere 7.0 Update2 and 20.1.7 for vSphere 7.0 Update3).
+   1. Download the NSX Advanced Load Balancer OVA from [MarketPlace](https://marketplace.cloud.vmware.com/services/details/nsx-advanced-load-balancer-1?slug=true).
+   2. Create a content library and upload NSX Advanced Load Balancer Controller OVA (20.1.6 for vSphere 7.0 Update2 and 20.1.7 for vSphere 7.0 Update3).
+
+## Air-gapped Deployment Considerations
+
+If you are deploying into an air-gapped environment, the following steps are applicable.
+
+### Create the Content Library and Populate with Tanzu Kubernetes Grid Images
+
+Service Installer attempts to create a subscribed content library, which fails in air-gapped environments. 
+To proceed without failure, create this content library manually. See [the vSphere with Tanzu documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-E8C37D8A-E261-44F0-9947-45ABAB526CF3.html) for information on creating a content library manually.
+
+**Note**: The user configured content library name can be provided as input for Service Installer to detect and use it during deployments
+
+### Download the Tanzu Kubernetes Grid Images
+
+You can download the Tanzu Kubernetes Grid images from the respective release page linked at [this URL](https://wp-content.vmware.com/v2/latest). To determine which files to download, refer to [the vSphere with Tanzu documentation](https://docs.vmware.com/en/VMware-vSphere/7.0/vmware-vsphere-with-tanzu/GUID-E8C37D8A-E261-44F0-9947-45ABAB526CF3.html).
+
+Alternatively, there is a community-maintained shell script to automate the process of downloading the Tanzu Kubernetes Grid OVAs. This shell script can be downloaded from [this URL](https://github.com/papivot/tkg-helper-scripts/blob/main/download-images-offline-tkr.sh). 
+**Note**: This script is community-maintained and, thus, it is not supported.
+
 
 ## Firewall Requirements
 To prepare the firewall, gather the following:
@@ -64,18 +83,23 @@ NSX ALB Service Engine Management IP     | NSX ALB Controller Nodes            |
 2. Configure and verify NTP.
 
    To configure and verify NTP on a Photon OS, see VMware [KB-76088](https://kb.vmware.com/s/article/76088).
-3. Import a certificate and private key to the Service Installer for VMware Tanzu bootstrap VM using a copy utility such as SCP or WinSCP (for windows).
+3. [Optional] Copy a certificate and private key to the Service Installer for VMware Tanzu bootstrap VM using a copy utility such as SCP or WinSCP (for windows). Make a note of the location because you need to provide it during the configuration later. If you do not upload a certificate, Service Installer generates a self-signed certificate.
 
-    **Note:** Service Installer uses the certificate for NSX Advanced Load Balancer, Harbor, Prometheus, and Grafana. Ensure that the certificate and private key are in PEM format and are not encrypted. Encrypted certificate files are not supported. If you do not upload a certificate, Service Installer generates a self-signed certificate.
+    **Note:** Service Installer uses the certificate for NSX Advanced Load Balancer, Harbor, Prometheus, and Grafana. Ensure that the certificate and private key are in PEM format and are not encrypted. Encrypted certificate files are not supported.
+
 4. Log in to Service Installer at http://\<_service-installer-ip-address_>\:8888.
+
 5. Under **Tanzu on VMware vSphere with DVS**, click **Deploy**.
+
 6. Under **Tanzu on vSphere - Deployment stage selection**, select one of the following deployment type:
 
    - **Enable Workload Control Plane** or
    - **Namespace and Workload cLuster**
+
 7. Under **Configure and Generate JSON**, click **Proceed**.  
 
   **Note**: To use an existing JSON file, click **Proceed** under **Upload and Re-configure JSON**.
+
 8. Enter the required details to generate the input file.
 
     The Service Installer user interface generates the JSON file based on your inputs and saves it to **/opt/vmware/arcas/src/** in installer VM. Files are named based on the deployment type you choose.
@@ -85,7 +109,7 @@ NSX ALB Service Engine Management IP     | NSX ALB Controller Nodes            |
 
     See the [sample JSON files](#sample-input-file) file for reference.
 
-10. Run the following command to initiate the deployment.
+9. Run the following command to initiate the deployment.
 
     **To Enable Workload Control Plane**
 
@@ -98,11 +122,13 @@ NSX ALB Service Engine Management IP     | NSX ALB Controller Nodes            |
     ```
     arcas --env vsphere --file /path/to/vsphere-dvs-tkgs-namespace.json --create_supervisor_namespace --create_workload_cluster --deploy_extensions --verbose
     ```
-11. Use the following command to clean up the deployment.
+10. Use the following command to clean up the deployment.
     ```
     arcas --env vsphere --file /path/to/vsphere-dvs-tkgs-wcp.json --cleanup
     ```
-    **Note:** For vSphere with Tanzu, provide a Workload Control Plane (WCP) deployment file to do the clean up. Deactivate the Workload Control Plane (WCP) on the cluster to clean.
+    **Note:** For vSphere with Tanzu, provide a Workload Control Plane (WCP) deployment file to do the clean up. Deactivate the Workload Control Plane (WCP) on the cluster to clean up.
+
+    **Note:** If you interrupt the deployment process (i.e. using a `ctrl-c`), you need to restart Service Installer to properly refresh the service. You can do this with `systemctl restart arcas`.
 
     The following table describes the parameters.
 
@@ -119,6 +145,7 @@ NSX ALB Service Engine Management IP     | NSX ALB Controller Nodes            |
     | --wcp_shutdown                   | This option gracefully shuts down WCP service and powers off the Supervisor and Workload Cluster VMs                                                                                        |
     | --wcp_bringup                    | Once the WCP service is shutdown, it can be restarted through bringup option. All the Supervisor and Workload cluster VMs will get powered on                                               |
     | --load_tanzu_image_to_harbor     | This will help to load the TKG dependencies to Harbor which is pre-bundled with SIVT
+    | --skip_precheck                   | This option skips all the pre-flight checks.
 
 11. Do the following to integrate with SaaS services such as Tanzu Mission Control, Tanzu Service Mesh, and Tanzu Observability. In the JSON file, to activate or deactivate:
 
@@ -146,7 +173,7 @@ Service Installer VMware Tanzu (SIVT) is also available with pre-bundled Harbor 
 To do this, run the following steps.
 
 1. Download the SIVT OVA file which includes pre-bundled Harbor: `service-installer-for-VMware-Tanzu-with-Harbor.ova`
-2. Download the dependency jar file 'tanzu_154.tar' which is available for download along with the SIVT OVA file and copy it to the following location on the SIVT VM: `/opt/vmware/arcas/tools`
+2. Download the dependency tar file 'tanzu_16.tar' which is available for download along with the SIVT OVA file and copy it to the following location on the SIVT VM: `/opt/vmware/arcas/tools`
 3. Run the following command:
 
    `arcas --load_tanzu_image_to_harbor`
@@ -161,7 +188,7 @@ To do this, run the following steps.
 
 To make changes to the configuration of a running package after deployment, update your deployed package:
 
-1. Obtain the installed package version and namespace details using the following command. 
+1. Obtain the installed package version and namespace details using the following command.
    ```
    tanzu package available list -A
    ```
@@ -170,7 +197,7 @@ To make changes to the configuration of a running package after deployment, upda
 
 3. Update the installed package using the following command.
 
-   ``` 
+   ```
    tanzu package installed update <package-name> --version <installed-package-version> --values-file <path-to-yaml-file-in-SIVT> --namespace <package-namespace>
    ```
 
@@ -189,7 +216,7 @@ To make changes to the configuration of a running package after deployment, upda
    [...]
    ```
 
-**Step 2:** Update the Grafana configuration in the `grafana-data-values.yaml` file available under `/opt/vmware/arcas/tanzu-clusters/<cluster-name>/grafana-data-values.yaml`. 
+**Step 2:** Update the Grafana configuration in the `grafana-data-values.yaml` file available under `/opt/vmware/arcas/tanzu-clusters/<cluster-name>/grafana-data-values.yaml`.
 
 **Step 3:** Update the installed package.
    ```
@@ -303,6 +330,20 @@ Following are the sample JSON files:
          "tkgsWorkloadDnsServers":"1.2.3.4",
          "tkgsWorkloadNtpServers":"time.xx.com",
          "tkgsWorkloadServiceCidr":"10.96.0.0/22"
+      },
+      "tkgServiceConfig": {
+         "proxySpec": {
+            "enableProxy": "false",
+            "httpProxy": "http://<fqdn/ip>:<port>",
+            "httpsProxy": "https://<fqdn/ip>:<port>",
+            "noProxy": "vcenter.xx.xx,172.x.x.x",
+            "proxyCert": "/path/to/proxy/cert/file"
+         },
+         "defaultCNI": "antrea",
+         "additionalTrustedCAs": {
+            "paths": "",
+            "endpointUrls": ""
+         }
       }
    }
 }
@@ -389,7 +430,29 @@ Following are the sample JSON files:
             "tkgsWorkloadClusterGroupName":"",
             "tkgsWorkloadEnableDataProtection":"false",
             "tkgWorkloadClusterCredential":"",
-            "tkgWorkloadClusterBackupLocation":""
+            "tkgWorkloadClusterBackupLocation":"",
+            "tkgWorkloadClusterVeleroDataProtection":{
+               "enableVelero":"true",
+               "username": "admin",
+               "passwordBase64": "cGFzc3dvcmQ=",
+               "bucketName": "workload-backup",
+               "backupS3Url": "http://<minio-server>:9000",
+               "backupPublicUrl": "http://<minio-server>:9000"
+            }
+         }
+      },
+      "tkgServiceConfig": {
+         "proxySpec": {
+            "enableProxy": "false",
+            "httpProxy": "http://<fqdn/ip>:<port>",
+            "httpsProxy": "https://<fqdn/ip>:<port>",
+            "noProxy": "vcenter.xx.xx,172.x.x.x",
+            "proxyCert": "/path/to/proxy/cert/file"
+         },
+         "defaultCNI": "antrea",
+         "additionalTrustedCAs": {
+            "paths": "",
+            "endpointUrls": ""
          }
       }
    },

@@ -314,7 +314,7 @@ export class NamespaceComponent extends StepFormDirective implements OnInit {
                     this.apiClient.allowedStoragePolicy = data.STORAGE_POLICIES;
                     this.apiClient.selectedVmClass = data.VM_CLASSES;
                     this.gotNamespaceInfo = true;
-                    this.errorNotification = '';
+                    this.errorNotification = null;
                 } else if (data.responseType === 'ERROR') {
                     this.gotNamespaceInfo = false;
                     this.errorNotification = data.msg;

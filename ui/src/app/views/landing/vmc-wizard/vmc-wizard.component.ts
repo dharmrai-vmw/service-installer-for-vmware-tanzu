@@ -335,6 +335,20 @@ export class VMCWizardComponent extends WizardBaseDirective implements OnInit {
         }
     }
 
+
+    public getCustomCertsAsList(certs: string) {
+        if (certs === "" || certs.length === 0) return [];
+        let certList = certs.split(',');
+        let listOfCerts = [];
+        let iter = 0;
+        while (iter < certList.length){
+            listOfCerts.push(certList[iter].trim());
+            iter++;
+        }
+        return listOfCerts;
+    }
+
+
     public setTSMStartsWithName() {
         let tmcEnable = this.getStringBoolFieldValue('vmcTanzuSaasSettingForm', 'tmcSettings');
         if (tmcEnable === 'true') {
@@ -348,6 +362,7 @@ export class VMCWizardComponent extends WizardBaseDirective implements OnInit {
             return '';
         }
     }
+
 
     public getPayload() {
         let workloadGiven = this.apiClient.workloadClusterSettings && this.apiClient.workloadDataSettings;
@@ -470,6 +485,7 @@ export class VMCWizardComponent extends WizardBaseDirective implements OnInit {
                     'tkgSharedserviceServiceCidr': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'serviceCidr'),
                     'tkgSharedserviceBaseOs': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'baseImage'),
                     'tkgSharedserviceKubeVersion': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'baseImageVersion'),
+                    'tkgCustomCertsPath': this.getCustomCertsAsList(this.getFieldValue('vmcSharedServiceNodeSettingForm', 'tkgCustomCert')),
                     'tkgSharedserviceRbacUserRoleSpec': {
                         'clusterAdminUsers': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'clusterAdminUsers'),
                         'adminUsers': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'adminUsers'),
@@ -479,7 +495,16 @@ export class VMCWizardComponent extends WizardBaseDirective implements OnInit {
                     'tkgSharedserviceClusterGroupName': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'clusterGroupName'),
                     'tkgSharedserviceEnableDataProtection': this.getStringBoolFieldValue('vmcSharedServiceNodeSettingForm', 'enableDataProtection'),
                     'tkgSharedClusterCredential': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroCredential'),
-                    'tkgSharedClusterBackupLocation': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroTargetLocation'),                    
+                    'tkgSharedClusterBackupLocation': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroTargetLocation'),
+                    'tkgSharedClusterVeleroDataProtection': {
+                        'enableVelero': this.getStringBoolFieldValue('vmcSharedServiceNodeSettingForm', 'enableVelero'),
+                        'username': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroUsername'),
+                        'passwordBase64': btoa(this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroPassword')),
+                        'bucketName': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroBucket'),
+                        'backupRegion': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroRegion'),
+                        'backupS3Url': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroS3Url'),
+                        'backupPublicUrl': this.getFieldValue('vmcSharedServiceNodeSettingForm', 'veleroPublicUrl'),
+                    },
                 },
                 'tkgMgmtDataNetworkSpec': {
                     'tkgMgmtDataGatewayCidr': this.getFieldValue('vmcTKGMgmtDataNWForm', 'TKGMgmtGatewayCidr'),
@@ -524,7 +549,16 @@ export class VMCWizardComponent extends WizardBaseDirective implements OnInit {
                     'tkgWorkloadClusterGroupName': !workloadGiven ? "default" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'clusterGroupName'),
                     'tkgWorkloadEnableDataProtection': !workloadGiven ? "false" : this.getStringBoolFieldValue('vmcWorkloadNodeSettingForm', 'enableDataProtection'),
                     'tkgWorkloadClusterCredential': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroCredential'),
-                    'tkgWorkloadClusterBackupLocation': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroTargetLocation')
+                    'tkgWorkloadClusterBackupLocation': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroTargetLocation'),
+                    'tkgWorkloadClusterVeleroDataProtection': {
+                        'enableVelero': !workloadGiven ? "false" : this.getStringBoolFieldValue('vmcWorkloadNodeSettingForm', 'enableVelero'),
+                        'username': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroUsername'),
+                        'passwordBase64': !workloadGiven ? "" : btoa(this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroPassword')),
+                        'bucketName': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroBucket'),
+                        'backupRegion': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroRegion'),
+                        'backupS3Url': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroS3Url'),
+                        'backupPublicUrl': !workloadGiven ? "" : this.getFieldValue('vmcWorkloadNodeSettingForm', 'veleroPublicUrl'),
+                    },
                 },
                 'harborSpec': {
                     'enableHarborExtension': this.apiClient.sharedServicesClusterSettings.toString(),

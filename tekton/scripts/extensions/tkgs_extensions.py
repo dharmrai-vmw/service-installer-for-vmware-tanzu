@@ -443,10 +443,10 @@ def deploy_extensions(cluster_name, jsonspec):
             return json.dumps(d), 200'''
         else:
             if len(listOfExtention) == 0:
-                logger.info("Prometheus and Grafana are disabled")
+                logger.info("Prometheus and Grafana are deactivated")
                 '''d = {
                     "responseType": "SUCCESS",
-                    "msg": "Prometheus and Grafana are disabled",
+                    "msg": "Prometheus and Grafana are deactivated",
                     "ERROR_CODE": 200
                 }
                 return json.dumps(d), 200'''

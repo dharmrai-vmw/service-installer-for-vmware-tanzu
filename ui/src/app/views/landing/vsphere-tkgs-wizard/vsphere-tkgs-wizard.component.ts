@@ -689,6 +689,7 @@ export class VSphereTkgsWizardComponent extends WizardBaseDirective implements O
                         'aviPasswordBase64': btoa(this.getFieldValue('vsphereAVINetworkSettingForm', 'aviPassword')),
                         'aviBackupPassphraseBase64': btoa(this.getFieldValue('vsphereAVINetworkSettingForm', 'aviBackupPassphrase')),
                         'enableAviHa': this.getStringBoolFieldValue('vsphereAVINetworkSettingForm', 'enableHA'),
+                        // 'modeOfDeployment': this.getFieldValue('vsphereAVINetworkSettingForm', 'modeOfDeployment') === '' ? 'orchestrated' : this.getFieldValue('vsphereAVINetworkSettingForm', 'modeOfDeployment'),
                         'aviController01Ip': this.getFieldValue('vsphereAVINetworkSettingForm', 'aviControllerIp'),
                         'aviController01Fqdn': this.getFieldValue('vsphereAVINetworkSettingForm', 'aviControllerFqdn'),
                         'aviController02Ip': this.getFieldValue('vsphereAVINetworkSettingForm', 'aviControllerIp02'),
@@ -715,6 +716,7 @@ export class VSphereTkgsWizardComponent extends WizardBaseDirective implements O
                         'tkgsMgmtNetworkDnsServers': this.getFieldValue('mgmtNwForm', 'dnsServer'),
                         'tkgsMgmtNetworkSearchDomains': this.getFieldValue('mgmtNwForm', 'searchDomain'),
                         'tkgsMgmtNetworkNtpServers': this.getFieldValue('mgmtNwForm', 'ntpServer'),
+                        'subscribedContentLibraryName': this.getFieldValue('mgmtNwForm', 'contentLib'),
                     },
                     'tkgsStoragePolicySpec': {
                         'masterStoragePolicy': this.getFieldValue('storagePolicyForm', 'masterStoragePolicy'),
@@ -813,11 +815,20 @@ export class VSphereTkgsWizardComponent extends WizardBaseDirective implements O
                             'tkgWorkloadClusterBackupLocation': this.getFieldValue('workloadClusterForm', 'veleroTargetLocation'),
                             'controlPlaneVolumes': this.getTkgsControlPlaneAdditionalVolumes(),
                             'workerVolumes': this.getTkgsWorkerAdditionalVolumes(),
+                            'tkgWorkloadClusterVeleroDataProtection': {
+                                'enableVelero': this.getStringBoolFieldValue('workloadClusterForm', 'enableVelero'),
+                                'username': this.getFieldValue('workloadClusterForm', 'veleroUsername'),
+                                'passwordBase64': btoa(this.getFieldValue('workloadClusterForm', 'veleroPassword')),
+                                'bucketName': this.getFieldValue('workloadClusterForm', 'veleroBucket'),
+                                'backupRegion': this.getFieldValue('workloadClusterForm', 'veleroRegion'),
+                                'backupS3Url': this.getFieldValue('workloadClusterForm', 'veleroS3Url'),
+                                'backupPublicUrl': this.getFieldValue('workloadClusterForm', 'veleroPublicUrl'),
+                            },
                         },
                     },
                     'tkgServiceConfig': {
                         'proxySpec': {
-                            'enableProxy': this.getFieldValue('proxyForm', 'proxySettings'),
+                            'enableProxy': this.getStringBoolFieldValue('proxyForm', 'proxySettings'),
                             'httpProxy': this.getTkgsHttpProxyParam(),
                             'httpsProxy': this.getTkgsHttpsProxy(),
                             'noProxy': this.getFieldValue('proxyForm', 'noProxy'),

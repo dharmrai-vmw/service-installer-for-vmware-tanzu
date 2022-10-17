@@ -12,7 +12,7 @@ import {
 } from '@angular/forms';
 // Third party imports
 import { ClrStepper } from '@clr/angular';
-import {Observable, Subscription} from 'rxjs';
+import { Observable, Subscription} from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { BasicSubscriber } from 'src/app/shared/abstracts/basic-subscriber';
 import { Providers, PROVIDERS } from 'src/app/shared/constants/app.constants';
@@ -51,7 +51,7 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
 //     vsphereSteps = [true, false, false, false, false, false, false, false, false, false, false, false];
     vmcSteps = [true, false, false, false, false, false, false, false, false, false, false, false];
     // vmcSteps = [true, false, false, false, false, false, false, false, false, false, false];
-    nsxtSteps = [true, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    nsxtSteps = [true, false, false, false, false, false, false, false, false, false, false, false];
 //     nsxtSteps = [true, false, false, false, false, false, false, false, false, false, false, false];
     vsphereTkgsSteps = [true, false, false, false, false, false, false, false, false, false, false, false];
     vsphereTkgsWcpSteps = [true, false, false, false, false, false, false, false, false, false, false, false];
@@ -183,6 +183,18 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
             }
         }
         this.getStepMetadata();
+    }
+
+    onNamespaceNextStep() {
+        // for (let i = 0; i < this.steps.length; i++) {
+        //     if (!this.steps[i]) {
+        //         this.steps[i] = true;
+        //         break;
+        //     }
+        // }
+        this.getStepMetadata();
+        // this.namespaceSteps.next(this.steps);
+        // console.log(this.namespaceSteps.getValue());
     }
 
     uploadNextStep() {
@@ -526,6 +538,10 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
                 this.form.get('vsphereMgmtNodeSettingForm').get('segmentName').setValue(mgmtSegment);
             }
             let grpName;
+            this.nsxtDataService.currentMgmtClusterGroupName.subscribe((grp) => grpName = grp);
+            if (this.apiClient.clusterGroups.indexOf(grpName) !== -1) {
+                this.form.get('vsphereMgmtNodeSettingForm').get('clusterGroupName').setValue(grpName);
+            }
             this.nsxtDataService.currentSharedClusterGroupName.subscribe((grp) => grpName = grp);
             if (this.apiClient.clusterGroups.indexOf(grpName) !== -1) {
                 this.form.get('vsphereSharedServiceNodeSettingForm').get('clusterGroupName').setValue(grpName);
@@ -813,7 +829,7 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
                 this.form.get('namespaceForm').get('storageSpec').setValue(this.apiClient.storagePolicy);
             }
         }
-        this.onNextStep();
+        this.onNamespaceNextStep();
     }
 
     onNamespaceNext() {
@@ -898,7 +914,7 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
                 }
             }
         }
-        this.onNextStep();
+        this.onNamespaceNextStep();
     }
 
     onTkgsWrkNextClick() {
@@ -926,13 +942,7 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
                 }
             }
         }
-        for (let i = 0; i < this.steps.length; i++) {
-            if (!this.steps[i]) {
-                this.steps[i] = true;
-                break;
-            }
-        }
-        this.getStepMetadata();
+        this.onNamespaceNextStep();
     }
 
     onVCDetailsNext() {
@@ -944,7 +954,7 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
                 this.form.get('tanzuSaasSettingForm').get('clusterName').setValue(supervisorClusterName);
             }
         }
-        this.onNextStep();
+        this.onNamespaceNextStep();
     }
 
     checkForWorkloadNetwork() {
@@ -965,23 +975,6 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
                     this.apiClient.wrkSegmentError = false;
                     this.form.get('workloadNetworkForm').get('portGroup').setValue(portGroup);
                 }
-//                 let serviceCidr;
-//                 this.vsphereTkgsDataService.currentWrkServiceCidr.subscribe(
-//                     (cidr) => serviceCidr = cidr);
-//                 this.form.get('workloadNetworkForm').get('serviceCidr').setValue(serviceCidr);
-//
-//                 let gatewayCidr;
-//                 this.vsphereTkgsDataService.currentWrkGateway.subscribe(
-//                     (cidr) => gatewayCidr = cidr);
-//                 this.form.get('workloadNetworkForm').get('gatewayAddress').setValue(gatewayCidr);
-//                 let startIp;
-//                 this.vsphereTkgsDataService.currentWrkStartAddress.subscribe(
-//                     (start) => startIp = start);
-//                 this.form.get('workloadNetworkForm').get('startAddress').setValue(startIp);
-//                 let endIp;
-//                 this.vsphereTkgsDataService.currentWrkEndAddress.subscribe(
-//                     (end) => endIp = end);
-//                 this.form.get('workloadNetworkForm').get('endAddress').setValue(endIp);
             }
         }
         if (this.apiClient.tmcEnabled) {
@@ -993,7 +986,7 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
             this.vsphereTkgsDataService.changeApiToken("");
             this.vsphereTkgsDataService.changeInstanceUrl("");
         }
-        this.onNextStep();
+        this.onNamespaceNextStep();
     }
 
     onIdmNext(env) {
@@ -1076,11 +1069,11 @@ export abstract class WizardBaseDirective extends BasicSubscriber implements Aft
             } else {
                 this.form.get('vsphereSharedServiceNodeSettingForm').get('sharedServicesClusterSettings').setValue(true);
             }
-            if (!this.apiClient.workloadDataSettings){
-                this.form.get('TKGWorkloadDataNWForm').get('workloadClusterSettings').setValue(false);
-            } else {
-                this.form.get('TKGWorkloadDataNWForm').get('workloadClusterSettings').setValue(true);
-            }
+            // if (!this.apiClient.workloadDataSettings){
+            //     this.form.get('TKGWorkloadDataNWForm').get('workloadClusterSettings').setValue(false);
+            // } else {
+            //     this.form.get('TKGWorkloadDataNWForm').get('workloadClusterSettings').setValue(true);
+            // }
         }
         this.onNextStep();
     }

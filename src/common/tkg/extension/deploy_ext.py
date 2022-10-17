@@ -23,7 +23,7 @@ def deploy_tkg_extentions():
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong env provided " + env[0],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         env = env[0]
@@ -33,14 +33,14 @@ def deploy_tkg_extentions():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to deploy extensions - ",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             else:
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "Extensions deployment is successful - ",
-                    "ERROR_CODE": 200
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
         else:
@@ -58,23 +58,23 @@ def deploy_tkg_extentions():
                     listOfExtention.append(Tkg_Extention_names.FLUENT_BIT_KAFKA)
 
             else:
-                current_app.logger.info("Tanzu extensions  deploy is disabled, no extensions will be deployed")
+                current_app.logger.info("Tanzu extensions  deploy is deactivated, no extensions will be deployed")
                 d = {
                     "responseType": "SUCCESS",
-                    "msg": "Tanzu extensions  deploy is disabled, no extensions will be deployed",
-                    "ERROR_CODE": 200
+                    "msg": "Tanzu extensions  deploy is deactivated, no extensions will be deployed",
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
             if Tkg_version.TKG_VERSION == "1.3":
                 extention = deploy_Dot3_ext()
-            elif Tkg_version.TKG_VERSION == "1.5":
+            elif Tkg_version.TKG_VERSION == "1.6":
                 extention = deploy_Dot4_ext()
             else:
                 current_app.logger.info("Unsupported TKG version")
                 d = {
                     "responseType": "ERROR",
                     "msg": "Unsupported TKG version",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             if len(listOfExtention) > 1:
@@ -82,7 +82,7 @@ def deploy_tkg_extentions():
                 d = {
                     "responseType": "ERROR",
                     "msg": "User can only enable one logging extension at a once, please select only one.",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             if checkPromethusEnabled():
@@ -93,7 +93,7 @@ def deploy_tkg_extentions():
                 d = {
                     "responseType": "SUCCESS",
                     "msg": "No extension to deploy ",
-                    "ERROR_CODE": 200
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
             for extention_name in listOfExtention:
@@ -103,14 +103,14 @@ def deploy_tkg_extentions():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to deploy extension "+str(status[0].json['msg']),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             current_app.logger.info("Successfully deployed "+str(listOfExtention))
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Successfully deployed extension "+str(listOfExtention),
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
@@ -118,6 +118,6 @@ def deploy_tkg_extentions():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy the extensions " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500

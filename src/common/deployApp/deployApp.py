@@ -33,7 +33,7 @@ def deployKaurdApp():
         d = {
             "responseType": "ERROR",
             "msg": "Bad Request",
-            "ERROR_CODE": "400"
+            "STATUS_CODE": "400"
         }
         current_app.logger.error("No env headers passed")
         return jsonify(d), 400
@@ -41,7 +41,7 @@ def deployKaurdApp():
         d = {
             "responseType": "ERROR",
             "msg": "Bad Request",
-            "ERROR_CODE": "400"
+            "STATUS_CODE": "400"
         }
         current_app.logger.error("No env headers found")
         return jsonify(d), 400
@@ -53,7 +53,7 @@ def deployKaurdApp():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env type",
-            "ERROR_CODE": "400"
+            "STATUS_CODE": "400"
         }
         current_app.logger.error("Wrong env type")
         return jsonify(d), 500
@@ -62,7 +62,7 @@ def deployKaurdApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed connect to workload " + str(connect[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         current_app.logger.error("Failed connect to workload " + str(connect[0]))
         return jsonify(d), 500
@@ -71,14 +71,14 @@ def deployKaurdApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed deploy kaurd " + str(deploy[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         current_app.logger.error("Failed deploy kaurd " + str(deploy[0]))
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Succesfully deployed kaurd " ,
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Succesfully deployed kaurd")
     return jsonify(d), 200
@@ -106,7 +106,7 @@ def deployApp():
         d = {
             "responseType": "ERROR",
             "msg": "Un-Authorized",
-            "ERROR_CODE": 401
+            "STATUS_CODE": 401
         }
         current_app.logger.error("Un-Authorized")
         return jsonify(d), 401
@@ -120,7 +120,7 @@ def deployApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to shared cluster context command",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -130,7 +130,7 @@ def deployApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch  shared cluster context " + str(status[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     podRunninng_ako_main = ["kubectl", "get", "svc", "-A"]
@@ -141,7 +141,7 @@ def deployApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to grab ip address ",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     headers = {
@@ -217,7 +217,7 @@ def deployApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed connect to workload " + str(connect[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         current_app.logger.error("Failed connect to workload " + str(connect[0]))
         return jsonify(d), 500
@@ -226,7 +226,7 @@ def deployApp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed deploy ngnix " + str(deploy[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         current_app.logger.error("Failed deploy ngnix " + str(deploy[0]))
         return jsonify(d), 500
@@ -296,7 +296,7 @@ def deployApp():
     d = {
         "responseType": "SUCCESS",
         "msg": "Sucessfully deployed Ngnx",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Sucessfully deployed Ngnx")
     return jsonify(d), 200
@@ -313,14 +313,14 @@ def createExt(body, url, type):
         d = {
             "responseType": "ERROR",
             "msg": response_sddc.text,
-            "ERROR_CODE": response_sddc.status_code
+            "STATUS_CODE": response_sddc.status_code
         }
         current_app.logger.error("Failed to create  " + type + " " + response_sddc.text)
         return jsonify(d), response_sddc.status_code
     d = {
         "responseType": "SUCCESS",
         "msg": response_sddc.text,
-        "ERROR_CODE": response_sddc.status_code
+        "STATUS_CODE": response_sddc.status_code
     }
     current_app.logger.info("Successfully created " + type)
     return jsonify(d), response_sddc.status_code
@@ -363,7 +363,7 @@ def connectToWorkLoadCluster(env):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to workload cluster context command",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -373,13 +373,13 @@ def connectToWorkLoadCluster(env):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to switch to workload cluster context " + str(status[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Switch to workload cluster context ",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -393,7 +393,7 @@ def depployKaurd():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to apply ngnx " + str(app[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     apply_kaurd_expose = ["kubectl", "expose", "pod", "kuard", "--type=LoadBalancer", "--port=80", "--target-port=8080"]
@@ -404,13 +404,13 @@ def depployKaurd():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to apply kaurd expose  " + str(app[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Applied and exposed kaurd  ",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -424,7 +424,7 @@ def deployNginxAndGetIp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to apply ngnx " + str(app[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if not waitTillPodsRunning():
@@ -432,7 +432,7 @@ def deployNginxAndGetIp():
         d = {
             "responseType": "ERROR",
             "msg": "Ngnix is not running",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     get_ngnx_ip_1 = ["kubectl", "get", "svc"]
@@ -443,7 +443,7 @@ def deployNginxAndGetIp():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to grab ip address ",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     else:
@@ -465,7 +465,7 @@ def getListOfDnat(headers):
         d = {
             "responseType": "ERROR",
             "msg": firewall_rule_CGW.json(),
-            "ERROR_CODE": firewall_rule_CGW.status_code
+            "STATUS_CODE": firewall_rule_CGW.status_code
         }
         current_app.logger.error(firewall_rule_CGW.json())
         return jsonify(d), firewall_rule_CGW.status_code

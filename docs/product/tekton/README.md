@@ -1,24 +1,28 @@
-## Tekton Pipeline for Tanzu Kubernetes Grid
+# Tekton Pipeline for Tanzu Kubernetes Grid
 
 Tekton is a cloud-native solution for building CI/CD system which provides the pipelines for Day-0 deployment and Day-2 operations of Tanzu Kubernetes Grid 1.5.x for a vSphere backed environment.
+
 ## Features
 
 - Bring up of reference architecture based Tanzu Kubernetes Grid environment on vSphere
-- E2E Tanzu Kubernetes Grid deployment and configuration of AVI controller, management, shared services, and workload clusters, plugins, extensions
-- E2E bring up of Tanzu Kubernetes Grid Service (TKGs) environment with enabling of WCP, supervisor cluster and workload cluster with plugins and extensions 
+- E2E Tanzu Kubernetes Grid deployment and configuration of AVI controller, management, shared services, and workload clusters, plug-ins, extensions
+- E2E bring up of vSphere with Tanzu environment with enabling of WCP, supervisor cluster, and workload cluster with plug-ins and extensions 
 - Rescale and resize Day-2 operations
-- Day-2 operations of TKGm Upgrade from 1.5.x to 1.5.4 with packages and extensions
+- Day-2 operations of Tanzu Kubernetes Grid upgrade from 1.5.x to 1.5.4 with packages and extensions
 
 ## Prerequisites
 
 Tekton pipeline execution requires the following:
 
-- Linux VM with kind cluster of version v1.21+
-  - Note: SIVT OVA can also be used as Linux VM with kind preloaded
+- Linux VM with `kind` cluster of version v1.21 or later
+  - **Note:** SIVT OVA can also be used as Linux VM with `kind` preloaded.
   - SIVT OVA can be downloaded from: https://marketplace.cloud.vmware.com/services/details/service-installer-for-vmware-tanzu-1?slug=true
-- Docker login
-- Service Installer Tekton Docker tar file: `service_installer_tekton_v154b.tar`  
-- Private gitlab/github repo
+- Service Installer Tekton Docker file:
+  - Download existing Service Installer Tekton tar file using Docker login from: http://sc-dbc2131.eng.vmware.com/smuthukumar/SERVICE_INSTALLER_IMAGES/service_installer_tekton_v154b.tar
+
+    OR
+  - Generate own Docker image using existing dockerfile in repo. For more information, see the following sections.
+- Private GitLab or GitHub repo
 
 ## Tekton Pipeline Execution
 
@@ -26,115 +30,142 @@ Tekton pipeline execution requires the following:
 
 1. Git preparation:
    
-   1. Create a private Git (Gitlab/Github) repository.
+   1. Create a private Git (GitLab or GitHub) repository.
    2. Clone the code from https://github.com/vmware-tanzu/service-installer-for-vmware-tanzu/tree/1.3.1-1.5.4/tekton.
    3. Create a Git personal access token (PAT) and copy the token for later stages.
-   4. For TKGm prepare `deployment-config.json` based on your environment and upload under `config/deployment-config.json` in private git repo.
-   5. For TKGs prepare `deployment-config-wcp.json` and `deployment-config-ns.json` based on your environment and upload under `config/deployment-config-wcp.json` and `config/deployment-config-ns.json` respectively in private git repo.
-   6. Please refer SIVT README.md for creation of respected json files.
+   4. For Tanzu Kubernetes Grid on vSphere, prepare `deployment-config.json` based on your environment and upload under `config/deployment-config.json` in the private git repo (Refer  `sample-json/sample-deployment-config.json`).
+   5. For vSphere with Tanzu, prepare `deployment-config-wcp.json` and `deployment-config-ns.json` based on your environment and upload under `config/deployment-config-wcp.json` and `config/deployment-config-ns.json` respectively in the private git repo. (Refer  `sample-json/sample-deployment-config-wcp.json` and `sample-jsonsample-deployment-config-ns.json`).
+   6. For Tanzu Kubernetes Grid on VCF, prepare `deployment-config.json` based on your environment and upload under `config/deployment-config.json` in private git repo (Refer  `sample-json/sample-deployment-config-vcf.json`).
+   7. Refer the SIVT README.md for creation of respective JSON files.
 
 2. Linux VM preparation:
-   1. Power On and login to the Linux/SIVT VM.
+   1. Power on and log in to the Linux/SIVT VM.
    2. Clone your private repository by using `git clone <private repo url>`.
   
 3. Tekton pipeline environment preparation:  
   
-   1. In your Linux/SIVT VM browse to the location where the Git repository is cloned.
-   2. Open `launch.sh` and update `TARBALL_FILE_PATH` to the absolute path where the Service Installer Docker TAR file is downloaded.</br>
-   For example: 
-      - `TARBALL_FILE_PATH="/root/tekton/arcas-tekton-cicd/service_installer_tekton_v15x.tar"`
-   </br>or
-      - `TARBALL_URL="http://mynfsserver/images/service_installer_tekton_v15x.tar"`
-   3. Save the file and exit.
-   4. Open `cluster_resources/kind-init-config.yaml`.
-   
-      Provide a free port for the nginx service to use. If you do not specify a port, by default 80 port is used.
-         ```
-         extraPortMappings:
-         - containerPort: 80
-           hostPort: <PROVIDE FREE PORT like 8085 or 8001>
-         ```
-   5. Execute:
-      ```shell
-      ./launch.sh --create-cluster
-      ``` 
-        This command creates a kind cluster which is required for the Tekton pipeline.
-   8. When prompted for the Docker login, provide the docker login credentials. 
-    
-      This needs to be done one time only.
+   1. In your Linux/SIVT VM, browse to the location where the Git repository is cloned.
+   2. You can generate own Docker image OR use a pre-existing Docker image.
+      1. To use a pre-existing Docker image, open `launch.sh` and update `TARBALL_FILE_PATH` to the absolute path where the Service Installer Docker TAR file is downloaded.
+         
+         For example:
+
+            - `TARBALL_FILE_PATH="/root/tekton/arcas-tekton-cicd/service_installer_tekton_v15x.tar"`
+            
+                or
+            - `TARBALL_URL="http://mynfsserver/images/service_installer_tekton_v15x.tar"`
+            
+            Save the file and exit.
+      2. To generate the Docker image using dockerfile, run the following command.
+            ```Shell
+            ./launch.sh --build_docker_image
+            ```
+
+         This will generate a Docker image named as `sivt_tekton:tkn` using the existing dockerfile.
+
+    3. Open `cluster_resources/kind-init-config.yaml` and provide a free port for the nginx service to use.
+  
+        If you do not specify a port, port 80 is used by default.
+        
+          ```
+            extraPortMappings:
+            - containerPort: 80
+              hostPort: <PROVIDE FREE PORT like 8085 or 8001>
+          ```
+  
+    4. Run the following command.
+        ```shell
+        ./launch.sh --create-cluster
+        ``` 
+        
+        This command creates a `kind` cluster, which is required for the Tekton pipeline.
+  
+    5. When prompted for the Docker login, provide the Docker login credentials.
+          
+        This needs to be done one time only.
   
 4. Tekton dashboard preparation:
 
-   Tekton provides a dashboard for monitoring and triggering pipelines from the UI. It is recommended to have the dashboard integrated. This step can be skipped, if Tekton dashboard is not required for your environment.
-   - Execute
+   Tekton provides a dashboard for monitoring and triggering pipelines from the UI. It is recommended to have the dashboard integrated. This step can be skipped if Tekton dashboard is not required for your environment.
+   - Run the folllowing command:
      ```shell
      ./launch.sh --deploy-dashboard
      ```
-      The exposed port is `hostPort` set in step 4 of `Tekton pipeline environment preparation`.
+      The exposed port is `hostPort` set in step 3 of `Tekton pipeline environment preparation`.
 
 5. Service accounts and secrets preparation:
-- Browse to the directory in Linux/SIVT VM where private git repo is cloned 
-- Open `values.yaml` in the SIVT OVA and update the respective entries.
-   ```
-   #@data/values-schema
-   ---
-   git:
-     host: <giturl>
-     repository: <username>/<repo_name>
-     branch: <branch_name>
-     username: <username>
-     password: <GITPAT>
-   imagename: docker.io/library/service_installer_tekton:v154b
-   imagepullpolicy: Never
-   ```
+   - Browse to the directory in Linux/SIVT VM where private git repo is cloned 
+   - Open `values.yaml` in the SIVT OVA and update the respective entries.
+      ```
+      #@data/values-schema
+      ---
+      git:
+        host: <giturl>
+        repository: <username>/<repo_name>
+        branch: <branch_name>
+        username: <username>
+        password: <GITPAT>
+      imagename: docker.io/library/service_installer_tekton:v154b
+      imagepullpolicy: Never
+      refreshToken: <MARKETPLACE REFRESH TOKEN>
+      ```
 
 ### Running the Day-0 Pipelines
-**For Day0 bringup of TKGm:**
-1. Update desired state YAML file:
-   - Browse to `desired-state` directory in Linux/SIVT VM and update `desired-state.yml` file as below:
+
+#### Day-0 bringup of Tanzu Kubernetes Grid
+
+1. Update the desired state YAML file:
+   - Browse to the `desired-state` directory in Linux/SIVT VM and update `desired-state.yml` file as below:
+   - Update env as `vsphere` or `vcf`
      ```
      ----
      version:
        tkgm: 1.5.4
+       env: vsphere
      ```
-2. Execute:
+2. Run the following command:
    ```shell
    ./launch.sh  --exec-day0
    ```
 
-**For Day0 bringup of TKGs:**
+#### Day-0 bringup of vSphere with Tanzu
+
 1. Update desired state YAML file:
-   - Browse to `desired-state` directory in Linux/SIVT VM and update `desired-state.yml` file as below:
+   - Browse to the `desired-state` directory in Linux/SIVT VM and update `desired-state.yml` file as below:
      ```
      ----
      version:
        tkgs: 1.5
+       env: vsphere
      ```
-2. Execute:
+2. Run the following command:
    ```shell
    ./launch.sh  --exec-tkgs-day0
    ```
 ### Running the Day-2 Pipelines
-1. Update desired state YAML file:
-    - Browse to `desired-state` directory in Linux/SIVT VM and update `desired-state.yml` file as below:
+
+1. Update the desired state YAML file:
+    - Browse to the `desired-state` directory in Linux/SIVT VM and update `desired-state.yml` file as below:
+    - Update env as `vsphere` or `vcf`
       ```
       ----
       version:
         tkgm: 1.5.4
+        env: vsphere
       ```
-2. If the targeted docker image for upgrade is already available in the kind cluster skip this step, else execute the below steps:
-   - Open launch.sh and update UPGRADE_TARBALL_FILE_PATH variable to the absolute path where the Service Installer Docker TAR file is downloaded.
+2. If the targeted Docker image for upgrade is already available in the `kind` cluster, skip this step. Else, do the below steps:
+   - Open `launch.sh` and update the `UPGRADE_TARBALL_FILE_PATH` variable to the absolute path where the Service Installer Docker TAR file is downloaded.
      For example: 
       - `UPGRADE_TARBALL_FILE_PATH="/root/tekton/arcas-tekton-cicd/service_installer_tekton_v15x.tar"`
-   - Execute:
+   - Run the following command:
      ```shell
      ./launch.sh --load-upgrade-imgs
      ```
-3. To upgrade all clusters execute:
+3. To upgrade all clusters, run:
     ```shell
     ./launch.sh  --exec-upgrade-all 
     ```
-4. To upgrade only management cluster execute:
+4. To upgrade only the management cluster, run:
     ```shell
     ./launch.sh  --exec-upgrade-mgmt 
     ```
@@ -149,7 +180,7 @@ Tekton pipeline execution requires the following:
     ```
 
 - List the pipeline runs:
-  - For TKGm:
+  - For Tanzu Kubernetes Grid:
       ```
       tkn pr ls
       NAME                      STARTED          DURATION     STATUS
@@ -157,14 +188,14 @@ Tekton pipeline execution requires the following:
       tkgm-bringup-day0-jqkbz   3 hours ago      47 minutes   Succeeded      
       ```
     
-  - For TKGs:
+  - For vSphere with Tanzu:
     ```
     tkn pr ls  
     NAME                      STARTED      DURATION   STATUS 
     tkgs-bringup-day0-z5qf4   1 hour ago   1 hour     Succeeded
     ```
 - List the task runs:
-  - For TKGm:
+  - For Tanzu Kubernetes Grid:
       ```
       tkn tr ls
       NAME                                                  STARTED          DURATION     STATUS        
@@ -172,7 +203,7 @@ Tekton pipeline execution requires the following:
       tkgm-bringup-day0-jd2mp-start-avi                     54 minutes ago   8 minutes    Succeeded
       tkgm-bringup-day0-jd2mp-start-prep-workspace          54 minutes ago   11 seconds   Succeeded
       ```
-  - For TKGs:
+  - For vSphere with Tanzu:
     ```
     tkn tr ls
     NAME                                                  STARTED          DURATION     STATUS
@@ -190,7 +221,7 @@ Tekton pipeline execution requires the following:
 ### Monitoring Pipelines
 
 - For monitoring pipelines, use the following command:
-  - TKGm:
+  - Tanzu Kubernetes Grid:
     ```
     tkn pr logs <tkgm-bringup-day0-jd2mp> --follow
     ```
@@ -199,11 +230,11 @@ Tekton pipeline execution requires the following:
     tkn pr logs <tkgs-bringup-day0-z5qf4> --follow
     ```
 - For debugging, use the following command:
-  - TKGm:
+  - Tanzu Kubernetes Grid:
     ```
     tkn pr desc <tkgm-bringup-day0-jd2mp>
     ```
-  - TKGs:
+  - vSphere with Tanzu:
     ```
     tkn pr desc <tkgs-bringup-day0-z5qf4>
     ```
@@ -216,7 +247,7 @@ Tekton pipelines also support execution of pipelines based on git commit changes
    ```sh
    kubectl apply -f https://github.com/bigkevmcd/tekton-polling-operator/releases/download/v0.4.0/release-v0.4.0.yaml
    ```
-3. Browse to Linux/SIVT VM directory to open `trigger-bringup-res.yml` under `trigger-based` directory.
+3. Browse to Linux/SIVT VM directory to open `trigger-bringup-res.yml` under the `trigger-based` directory.
 4. Update the following fields: 
       - url: UPDATE FULL GIT PATH OF REPOSITORY
       - ref: BRANCH_NAME
@@ -224,14 +255,14 @@ Tekton pipelines also support execution of pipelines based on git commit changes
       - type: gitlab/github
  
    Save changes and exit. 
-5. Open trigger-bringup-pipeline.yml
+5. Open `trigger-bringup-pipeline.yml`.
 6. Update the following fields:
     - default: "UPDATE IMAGE LOCATION" to docker.io/library/service_installer_tekton:v153
     - default: "UPDATE FULL GIT PATH OF REPOSITORY" to full path of the git repository ending with .git
     - default: main to the branch in the private git repo. 
   
    Save changes and exit.
-7. Execute the following command.
+7. Run the following command.
    ```sh 
    kubectl apply -f trigger-bringup-pipeline.yml; 
    kubectl apply -f trigger-bringup-res.yml

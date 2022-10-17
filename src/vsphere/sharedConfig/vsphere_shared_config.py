@@ -32,14 +32,17 @@ from common.common_utilities import preChecks, envCheck, checkSharedServiceProxy
     checkWorkloadProxyEnabled, enableProxy, checkAirGappedIsEnabled, grabPortFromUrl, grabHostFromUrl, \
     registerWithTmcOnSharedAndWorkload, deployCluster, registerTanzuObservability, registerTSM, getNetworkFolder, \
     downloadAndPushKubernetesOvaMarketPlace, isEnvTkgs_wcp, isEnvTkgs_ns, getKubeVersionFullName, getNetworkPathTMC, \
-    checkDataProtectionEnabled, enable_data_protection, obtain_second_csrf, createClusterFolder
+    checkDataProtectionEnabled, enable_data_protection, obtain_second_csrf, createClusterFolder, \
+    create_certs_in_ytt_config, isEnvTkgm
 from common.common_utilities import preChecks, envCheck, get_avi_version, checkSharedServiceProxyEnabled, \
     checkWorkloadProxyEnabled, enableProxy, checkAirGappedIsEnabled, grabPortFromUrl, grabHostFromUrl, \
     registerWithTmcOnSharedAndWorkload, deployCluster, registerTanzuObservability, registerTSM, getNetworkFolder, \
     checkTmcEnabled, createProxyCredentialsTMC, checkTmcRegister, checkEnableIdentityManagement, checkPinnipedInstalled, \
-    checkPinnipedServiceStatus, checkPinnipedDexServiceStatus, createRbacUsers, isAviHaEnabled
+    checkPinnipedServiceStatus, checkPinnipedDexServiceStatus, createRbacUsers, isAviHaEnabled, \
+    enable_data_protection_velero, checkDataProtectionEnabledVelero
 
 from common.certificate_base64 import getBase64CertWriteToFile
+from vsphere.managementConfig.vsphere_management_config import getCloudConnectUser, fetchTier1GatewayId
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -53,7 +56,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = env[0]
@@ -66,7 +69,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context command",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -76,7 +79,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get switch to management cluster context " + str(status[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -99,11 +102,12 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "AKO pods are not running on waiting for 10m " + str(command_status_ako[0]),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
-    current_app.logger.info("Checking if AKO Deployment Config already exists for Shared services cluster: " + shared_cluster_name)
+    current_app.logger.info(
+        "Checking if AKO Deployment Config already exists for Shared services cluster: " + shared_cluster_name)
     command_main = ["kubectl", "get", "adc"]
     command_grep = ["grep", "install-ako-for-shared-services-cluster"]
     command_status_adc = grabPipeOutput(command_main, command_grep)
@@ -117,7 +121,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to delete an already present AKO Deployment config",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
 
@@ -130,12 +134,14 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get ip of avi controller",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     try:
-        tkg_mgmt_data_pg = request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName']
-        tkg_cluster_vip_name = request.get_json(force=True)['tkgComponentSpec']['tkgClusterVipNetwork']['tkgClusterVipNetworkName']
+        if env == Env.VSPHERE:
+            tkg_mgmt_data_pg = request.get_json(force=True)['tkgMgmtDataNetwork']['tkgMgmtDataNetworkName']
+        tkg_cluster_vip_name = request.get_json(force=True)['tkgComponentSpec']['tkgClusterVipNetwork'][
+            'tkgClusterVipNetworkName']
     except Exception as e:
         current_app.logger.error("One of the following values is not present in input file: "
                                  "tkgMgmtDataNetworkName, tkgClusterVipNetworkName")
@@ -144,7 +150,7 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
             "responseType": "ERROR",
             "msg": "One of the following values is not present in input file: tkgMgmtDataNetworkName, "
                    "tkgClusterVipNetworkName",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     csrf2 = obtain_second_csrf(avi_fqdn, env)
@@ -153,32 +159,74 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get csrf from new set password",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     aviVersion = get_avi_version(env)
-    tkg_mgmt_data_netmask = getVipNetworkIpNetMask(avi_fqdn, csrf2, tkg_mgmt_data_pg, aviVersion)
-    if tkg_mgmt_data_netmask[0] is None or tkg_mgmt_data_netmask[0] == "NOT_FOUND":
-        current_app.logger.error("Failed to get TKG Management Data netmask")
-        d = {
-            "responseType": "ERROR",
-            "msg": "Failed to get TKG Management Data netmask",
-            "ERROR_CODE": 500
-        }
-        return jsonify(d), 500
+    if env == Env.VSPHERE:
+        tkg_mgmt_data_netmask = getVipNetworkIpNetMask(avi_fqdn, csrf2, tkg_mgmt_data_pg, aviVersion)
+        if tkg_mgmt_data_netmask[0] is None or tkg_mgmt_data_netmask[0] == "NOT_FOUND":
+            current_app.logger.error("Failed to get TKG Management Data netmask")
+            d = {
+                "responseType": "ERROR",
+                "msg": "Failed to get TKG Management Data netmask",
+                "STATUS_CODE": 500
+            }
+            return jsonify(d), 500
     tkg_cluster_vip_netmask = getVipNetworkIpNetMask(avi_fqdn, csrf2, tkg_cluster_vip_name, aviVersion)
     if tkg_cluster_vip_netmask[0] is None or tkg_cluster_vip_netmask[0] == "NOT_FOUND":
         current_app.logger.error("Failed to get Cluster VIP netmask")
         d = {
             "responseType": "ERROR",
             "msg": "Failed to get Cluster VIP netmask",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
+        }
+        return jsonify(d), 500
+    if env == Env.VCF:
+        shared_service_network = request.get_json(force=True)['tkgComponentSpec']['tkgSharedserviceSpec'][
+            'tkgSharedserviceNetworkName']
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Cookie": csrf2[1],
+            "referer": "https://" + avi_fqdn + "/login",
+            "x-avi-version": aviVersion,
+            "x-csrftoken": csrf2[0]
+        }
+        status, value = getCloudConnectUser(avi_fqdn, headers)
+        nsxt_cred = value["nsxUUid"]
+        tier1_id, status_tier1 = fetchTier1GatewayId(avi_fqdn, headers, nsxt_cred)
+        if tier1_id is None:
+            current_app.logger.error("Failed to get Tier 1 details " + str(status_tier1))
+            d = {
+                "responseType": "ERROR",
+                "msg": "Failed to get Tier 1 details " + str(status_tier1),
+                "STATUS_CODE": 500
+            }
+            return jsonify(d), 500
+        tier1 = status_tier1
+    else:
+        tier1 = ""
+        shared_service_network = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
+            'tkgMgmtNetworkName']
+    cluster_vip_cidr = getVipNetworkIpNetMask(avi_fqdn, csrf2, tkg_cluster_vip_name, aviVersion)
+    if cluster_vip_cidr[0] is None or cluster_vip_cidr[0] == "NOT_FOUND":
+        current_app.logger.error("Failed to get Vip network netmask")
+        d = {
+            "responseType": "ERROR",
+            "msg": "Failed to get Vip network netmask",
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     current_app.logger.info("Creating AKODeploymentConfig for shared services cluster...")
-    createAkoFile(avi_fqdn, shared_cluster_name, tkg_mgmt_data_netmask[0], tkg_mgmt_data_pg, env)
+    if env ==  Env.VSPHERE:
+        createAkoFile(avi_fqdn, shared_cluster_name, tkg_mgmt_data_netmask[0], tkg_mgmt_data_pg, tkg_cluster_vip_name,
+                    shared_service_network, cluster_vip_cidr[0], tier1, env)
+    else:
+        createAkoFile(avi_fqdn, shared_cluster_name, cluster_vip_cidr[0], tkg_cluster_vip_name, tkg_cluster_vip_name,
+                      shared_service_network, cluster_vip_cidr[0], tier1, env)
     yaml_file_path = Paths.CLUSTER_PATH + shared_cluster_name + "/tkgvsphere-ako-shared-services-cluster.yaml"
-    listOfCommand = ["kubectl", "create", "-f", yaml_file_path]
+    listOfCommand = ["kubectl", "create", "-f", yaml_file_path,"--validate=false"]
     status = runShellCommandAndReturnOutputAsList(listOfCommand)
     if status[1] != 0:
         if not str(status[0]).__contains__("already has a value"):
@@ -186,14 +234,14 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to create new AkoDeploymentConfig " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
     current_app.logger.info("Successfully created a new AkoDeploymentConfig for shared services cluster")
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully validated running status for AKO",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
     # Step: create shared cluster
@@ -202,7 +250,8 @@ def akoDeploymentConfigSharedCluster(shared_cluster_name):
     # Do we need to check the cloud status here as well?
 
 
-def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg, env):
+def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg, cluster_vip_name, shared_network,
+                  cluster_vip_cidr, tier1_path, env):
     if checkAirGappedIsEnabled(env):
         air_gapped_repo = str(
             request.get_json(force=True)['envSpec']['customRepositorySpec']['tkgCustomImageRepository'])
@@ -210,13 +259,29 @@ def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg, en
         repository = air_gapped_repo + '/ako'
     else:
         repository = 'projects.registry.vmware.com/tkg/ako'
-
+    se_cloud = Cloud.SE_GROUP_NAME_VSPHERE
+    cloud_name = Cloud.CLOUD_NAME_VSPHERE
+    shared_nw = dict(networkName=shared_network)
+    lis_ = [shared_nw]
+    extra_config = dict(cniPlugin="antrea",
+                        disableStaticRouteSync=True,
+                        ingress=dict(defaultIngressController=False, disableIngressClass=True,
+                                     nodeNetworkList=lis_))
+    if env == Env.VCF:
+        se_cloud = Cloud.SE_GROUP_NAME_VSPHERE.replace("vsphere", "nsxt")
+        cloud_name = Cloud.CLOUD_NAME_VSPHERE.replace("vsphere", "nsxt")
+        extra_config = dict(cniPlugin="antrea",
+                            disableStaticRouteSync=True,
+                            l4Config=dict(autoFQDN="disabled"),
+                            layer7Only=False,
+                            networksConfig=dict(enableRHI=False, nsxtT1LR=tier1_path),
+                            ingress=dict(defaultIngressController=True, disableIngressClass=False,
+                                         nodeNetworkList=lis_))
     data = dict(
         apiVersion='networking.tkg.tanzu.vmware.com/v1alpha1',
         kind='AKODeploymentConfig',
         metadata=dict(
-            finalizers=['ako-operator.networking.tkg.tanzu.vmware.com'],
-            generation=1,
+            generation=2,
             name='install-ako-for-shared-services-cluster',
         ),
         spec=dict(
@@ -227,19 +292,21 @@ def createAkoFile(ip, shared_cluster_name, tkgMgmtDataVipCidr, tkgMgmtDataPg, en
                 name='avi-controller-ca',
                 namespace='tkg-system-networking'
             ),
-            cloudName=Cloud.CLOUD_NAME_VSPHERE,
+            cloudName=cloud_name,
             clusterSelector=dict(
                 matchLabels=dict(
                     type=AkoType.SHARED_CLUSTER_SELECTOR
                 )
             ),
             controller=ip,
+            controlPlaneNetwork=dict(cidr=cluster_vip_cidr, name=cluster_vip_name),
             dataNetwork=dict(cidr=tkgMgmtDataVipCidr, name=tkgMgmtDataPg),
-            extraConfigs=dict(ingress=dict(defaultIngressController=False, disableIngressClass=True)),
-            serviceEngineGroup=Cloud.SE_GROUP_NAME_VSPHERE
+            extraConfigs=extra_config,
+            serviceEngineGroup=se_cloud
         )
     )
-    with open(Paths.CLUSTER_PATH + shared_cluster_name + '/tkgvsphere-ako-shared-services-cluster.yaml', 'w') as outfile:
+    with open(Paths.CLUSTER_PATH + shared_cluster_name + '/tkgvsphere-ako-shared-services-cluster.yaml',
+              'w') as outfile:
         yaml = ruamel.yaml.YAML()
         yaml.indent(mapping=2, sequence=4, offset=3)
         yaml.dump(data, outfile)
@@ -253,7 +320,7 @@ def configSharedCluster():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to Config shared cluster " + str(deploy_shared[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     deploy_extention = deployExtentions()
@@ -262,13 +329,13 @@ def configSharedCluster():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to deploy extention " + str(deploy_extention[0].json['msg']),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     d = {
         "responseType": "SUCCESS",
         "msg": "Shared cluster configured Successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info("Shared cluster configured Successfully")
     return jsonify(d), 200
@@ -282,7 +349,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": pre[0].json['msg'],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     env = envCheck()
@@ -291,7 +358,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Wrong env provided " + env[0],
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     json_dict = request.get_json(force=True)
@@ -333,11 +400,22 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": down_status[1],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
     else:
         current_app.logger.info("MarketPlace refresh token is not provided, skipping the download of kubernetes ova")
+    # apply custom certificates in ytt config with TKGm
+    if isEnvTkgm(env):
+        status = create_certs_in_ytt_config()
+        if not status[0]:
+            current_app.logger.error("error in copy custom certificates " + str(status[1]))
+            d = {
+                "responseType": "ERROR",
+                "msg": "error in copy custom certificates " + str(status[1]),
+                "STATUS_CODE": 500
+            }
+            return jsonify(d), 500
     try:
         isCreated4 = createResourcePool(vcenter_ip, vcenter_username, password,
                                         cluster_name,
@@ -351,7 +429,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create resource pool " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     try:
@@ -365,7 +443,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create folder " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, str(e)
     management_cluster = request.get_json(force=True)['tkgComponentSpec']['tkgMgmtComponents'][
@@ -378,7 +456,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to ssh key from config file " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     podRunninng = ["tanzu", "cluster", "list"]
@@ -388,7 +466,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to run command to check status of pods",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     tmc_required = str(request.get_json(force=True)['envSpec']["saasEndpoints"]['tmcDetails']['tmcAvailability'])
@@ -397,13 +475,13 @@ def deploy():
         tmc_flag = True
     elif tmc_required.lower() == "false":
         tmc_flag = False
-        current_app.logger.info("Tmc registration is disabled")
+        current_app.logger.info("Tmc registration is deactivated")
     else:
         current_app.logger.error("Wrong tmc selection attribute provided " + tmc_required)
         d = {
             "responseType": "ERROR",
             "msg": "Wrong tmc selection attribute provided " + tmc_required,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if env == Env.VCF:
@@ -437,7 +515,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Unsupported control plan provided please specify PROD or DEV " + cluster_plan,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if env == Env.VSPHERE:
@@ -462,7 +540,7 @@ def deploy():
             "responseType": "ERROR",
             "msg": "Provided cluster size: " + size + "is not supported, please provide one of: "
                                                       "small/medium/large/extra-large/custom",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if size.lower() == "small":
@@ -505,7 +583,7 @@ def deploy():
             "responseType": "ERROR",
             "msg": "Provided cluster size: " + size + "is not supported, please provide one of: "
                                                       "small/medium/large/extra-large/custom",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
     if env == Env.VCF:
@@ -532,7 +610,7 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Network folder not found for " + shared_service_network,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -540,15 +618,18 @@ def deploy():
         d = {
             "responseType": "ERROR",
             "msg": "Failed to create directory: " + Paths.CLUSTER_PATH + shared_cluster_name,
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
-    current_app.logger.info("The config files for shared services cluster will be located at: " + Paths.CLUSTER_PATH + shared_cluster_name)
-    if Tkg_version.TKG_VERSION == "1.5" and checkTmcEnabled(env):
+    current_app.logger.info(
+        "The config files for shared services cluster will be located at: " + Paths.CLUSTER_PATH + shared_cluster_name)
+    if Tkg_version.TKG_VERSION == "1.6" and checkTmcEnabled(env):
         if env == Env.VCF:
-            clusterGroup = request.get_json(force=True)['tkgComponentSpec']["tkgSharedserviceSpec"]['tkgSharedserviceClusterGroupName']
+            clusterGroup = request.get_json(force=True)['tkgComponentSpec']["tkgSharedserviceSpec"][
+                'tkgSharedserviceClusterGroupName']
         else:
-            clusterGroup = request.get_json(force=True)['tkgComponentSpec']["tkgMgmtComponents"]['tkgSharedserviceClusterGroupName']
+            clusterGroup = request.get_json(force=True)['tkgComponentSpec']["tkgMgmtComponents"][
+                'tkgSharedserviceClusterGroupName']
 
         if not clusterGroup:
             clusterGroup = "default"
@@ -559,7 +640,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to management cluster context command",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -569,7 +650,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         version_status = getKubeVersionFullName(kubernetes_ova_version)
@@ -578,7 +659,7 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": "Kubernetes OVA Version is not found for Shared Service Cluster",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -590,7 +671,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": proxy_name_state[0],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             proxy_name = "arcas-" + shared_cluster_name + "-tmc-proxy"
@@ -618,7 +699,7 @@ def deploy():
                                        "--control-plane-disk-gib", disk, "--control-plane-memory-mib", memory,
                                        "--worker-node-count", machineCount, "--worker-cpu", cpu, "--worker-disk-gib",
                                        disk, "--worker-memory-mib", memory, "--pods-cidr-blocks", pod_cidr,
-                                       "--service-cidr-blocks", service_cidr,"--proxy-name",
+                                       "--service-cidr-blocks", service_cidr, "--proxy-name",
                                        proxy_name]
         else:
             if cluster_plan.lower() == PLAN.PROD_PLAN:
@@ -647,7 +728,7 @@ def deploy():
                                        "--service-cidr-blocks", service_cidr]
     isCheck = False
     if command_status[0] is None:
-        if Tkg_version.TKG_VERSION == "1.5" and checkTmcEnabled(env):
+        if Tkg_version.TKG_VERSION == "1.6" and checkTmcEnabled(env):
             current_app.logger.info("Creating AkoDeploymentConfig for shared services cluster")
             ako_deployment_config_status = akoDeploymentConfigSharedCluster(shared_cluster_name)
             if ako_deployment_config_status[1] != 200:
@@ -655,7 +736,7 @@ def deploy():
                 d = {
                     "responseType": "SUCCESS",
                     "msg": ako_deployment_config_status[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Deploying shared cluster...")
@@ -665,7 +746,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to run command to create shared cluster " + str(command_status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -681,7 +762,7 @@ def deploy():
                     d = {
                         "responseType": "SUCCESS",
                         "msg": ako_deployment_config_status[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Deploying shared cluster using tanzu 1.5")
@@ -695,7 +776,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to deploy cluster " + deploy_status[1],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -707,7 +788,7 @@ def deploy():
                         d = {
                             "responseType": "SUCCESS",
                             "msg": ako_deployment_config_status[0].json['msg'],
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info("Deploying shared cluster, after verification using tmc")
@@ -729,7 +810,7 @@ def deploy():
                                 d = {
                                     "responseType": "ERROR",
                                     "msg": "Failed to run command to create shared cluster " + str(command_status_v[0]),
-                                    "ERROR_CODE": 500
+                                    "STATUS_CODE": 500
                                 }
                                 return jsonify(d), 500
             count = 0
@@ -740,7 +821,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to check pods are running " + str(command_status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 while not verifyPodsAreRunning(shared_cluster_name, command_status[0],
@@ -751,7 +832,7 @@ def deploy():
                         d = {
                             "responseType": "ERROR",
                             "msg": "Failed to check pods are running " + str(command_status[0]),
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                     count = count + 1
@@ -762,7 +843,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": shared_cluster_name + " is not running on waiting " + str(count * 30) + "s",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             commands = ["tanzu", "management-cluster", "kubeconfig", "get", management_cluster, "--admin"]
@@ -772,7 +853,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to management cluster context command",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
@@ -782,7 +863,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfCommand = ["kubectl", "label", "cluster.cluster.x-k8s.io/" + shared_cluster_name,
@@ -793,11 +874,12 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to apply k8s label " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfCommand = ["kubectl", "label", "cluster",
-                            shared_cluster_name, AkoType.KEY + "=" + AkoType.SHARED_CLUSTER_SELECTOR, "--overwrite=true"]
+                            shared_cluster_name, AkoType.KEY + "=" + AkoType.SHARED_CLUSTER_SELECTOR,
+                            "--overwrite=true"]
             status = runShellCommandAndReturnOutputAsList(lisOfCommand)
             if status[1] != 0:
                 if not str(status[0]).__contains__("already has a value"):
@@ -805,7 +887,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": "Failed to apply ako label " + str(status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
             else:
@@ -817,7 +899,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to shared cluster context command",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
@@ -827,7 +909,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Failed to get switch to shared cluster context " + str(status[0]),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info("Switched to " + shared_cluster_name + " context")
@@ -839,7 +921,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": check_pinniped[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 if env == Env.VSPHERE:
@@ -884,7 +966,7 @@ def deploy():
                     d = {
                         "responseType": "ERROR",
                         "msg": rbac_user_status[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Successfully created RBAC for all the provided users")
@@ -912,7 +994,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Ako pods are not running on waiting " + str(count_ako * 30),
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             if count_ako > 30:
@@ -930,10 +1012,10 @@ def deploy():
             d = {
                 "responseType": "ERROR",
                 "msg": state[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
-    elif checkTmcEnabled(env) and Tkg_version.TKG_VERSION == "1.5":
+    elif checkTmcEnabled(env) and Tkg_version.TKG_VERSION == "1.6":
         current_app.logger.info("Cluster is already deployed via TMC")
         if checkDataProtectionEnabled(env, "shared"):
             is_enabled = enable_data_protection(env, shared_cluster_name, management_cluster)
@@ -942,7 +1024,7 @@ def deploy():
                 d = {
                     "responseType": "ERROR",
                     "msg": is_enabled[1],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             current_app.logger.info(is_enabled[1])
@@ -951,15 +1033,52 @@ def deploy():
     elif checkTmcEnabled(env):
         current_app.logger.info("Cluster is already deployed via TMC")
     else:
-        current_app.logger.info("TMC is disabled")
+        current_app.logger.info("TMC is deactivated")
+        current_app.logger.info("Check whether data protection is to be enabled via Velero on Shared Cluster")
+        if checkDataProtectionEnabledVelero(env, "shared"):
+            commands_shared = ["tanzu", "cluster", "kubeconfig", "get", shared_cluster_name, "--admin"]
+            kubeContextCommand_shared = grabKubectlCommand(commands_shared, RegexPattern.SWITCH_CONTEXT_KUBECTL)
+            if kubeContextCommand_shared is None:
+                current_app.logger.error("Failed to get switch to shared cluster context command")
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get switch to shared cluster context command",
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            lisOfSwitchContextCommand_shared = str(kubeContextCommand_shared).split(" ")
+            status = runShellCommandAndReturnOutputAsList(lisOfSwitchContextCommand_shared)
+            if status[1] != 0:
+                current_app.logger.error("Failed to get switch to shared cluster context " + str(status[0]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get switch to shared cluster context " + str(status[0]),
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            current_app.logger.info("Switched to " + shared_cluster_name + " context")
+            is_enabled = enable_data_protection_velero("shared", env)
+            if not is_enabled[0]:
+                current_app.logger.error("ERROR: Failed to enable data protection via velero on Shared Cluster")
+                current_app.logger.error(is_enabled[1])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": is_enabled[1],
+                    "STATUS_CODE": 500
+                }
+                return jsonify(d), 500
+            current_app.logger.info("Successfully enabled data protection via Velero on Shared Cluster")
+            current_app.logger.info(is_enabled[1])
+        else:
+            current_app.logger.info("Data protection via Velero setting is not active for Shared Cluster")
     to = registerTanzuObservability(shared_cluster_name, env, size)
     if to[1] != 200:
         current_app.logger.error(to[0].json['msg'])
         return to[0], to[1]
     d = {
         "responseType": "SUCCESS",
-        "msg": "Successfully deployed  cluster " + shared_cluster_name,
-        "ERROR_CODE": 200
+        "msg": "Successfully deployed cluster " + shared_cluster_name,
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200
 
@@ -982,7 +1101,7 @@ def waitForGrepProcess(list1, list2, podName, dir):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to verify pod running",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, count_cert
     if not running:
@@ -990,13 +1109,13 @@ def waitForGrepProcess(list1, list2, podName, dir):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, count_cert
     d = {
         "responseType": "ERROR",
         "msg": "Successfully running " + podName + " ",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     return jsonify(d), 200, count_cert
 
@@ -1036,13 +1155,13 @@ def waitForProcess(list1, podName):
         d = {
             "responseType": "ERROR",
             "msg": podName + " is not running on waiting " + str(count_cert * 30) + "s",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500, count_cert
     current_app.logger.info("Successfully running " + podName)
     d = {
         "responseType": "SUCCESS",
         "msg": "Successfully running" + podName,
-        "ERROR_CODE": 500
+        "STATUS_CODE": 500
     }
     return jsonify(d), 200, count_cert

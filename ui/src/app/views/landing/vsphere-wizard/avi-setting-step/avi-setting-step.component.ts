@@ -41,6 +41,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
     @Input() providerType: string;
     @Input() errorNotification: any;
     
+    ModesOfDeployment = ['orchestrated', 'non-orchestrated'];
     loading: boolean = false;
     loadingState: ClrLoadingState = ClrLoadingState.DEFAULT;
     PROVIDERS: Providers = PROVIDERS;
@@ -83,6 +84,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
     private aviClusterVipEndRange: string;
     private aviClusterVipSeStartRange: string;
     private aviClusterVipSeEndRange: string;
+    private modeOfDeployment;
 
     constructor(private validationService: ValidationService,
                 private wizardFormService: VSphereWizardFormService,
@@ -101,6 +103,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 Validators.required
             ])
         );
+        this.formGroup.addControl('modeOfDeployment', new FormControl('orchestrated', []));
         this.formGroup.addControl(
             'aviSize',
             new FormControl('', [
@@ -249,6 +252,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
 
         this.loadingState = ClrLoadingState.DEFAULT;
         this.formGroup['canMoveToNext'] = () => {
+            this.nameResolutionTest();
             return (this.formGroup.valid && this.apiClient.AviIpValidated && this.nameResolution);
         };
         setTimeout(_ => {
@@ -322,6 +326,9 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 (uploadStatus) => this.uploadStatus = uploadStatus);
             if (this.uploadStatus) {
                 // AVI Controller Node FQDN and IP Set
+                this.subscription = this.dataService.currentModeOfDeployment.subscribe(
+                    (mode) => this.modeOfDeployment = mode);
+                this.formGroup.get('modeOfDeployment').setValue(this.modeOfDeployment);
                 this.subscription = this.dataService.currentAviHA.subscribe(
                     (enableHa) => this.enableHA = enableHa);
                 this.formGroup.get('enableHA').setValue(this.enableHA);
@@ -551,11 +558,11 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
         }
         if (!this.apiClient.AviIpValidated){
             if (mgmtErrorMsg === '') {
-                this.errorNotification = '';
+                this.errorNotification = null;
             } else {
                 this.errorNotification = mgmtErrorMsg;
             }
-            if (this.errorNotification === '') {
+            if (this.errorNotification === null) {
                 if (clusterVipError !== '') {
                     this.errorNotification = clusterVipError;
                 }
@@ -564,7 +571,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                     this.errorNotification = this.errorNotification + '\n' + clusterVipError;
                 }
             }
-            if (this.errorNotification === '') {
+            if (this.errorNotification === null) {
             }
             this.apiClient.AviIpValidated = false;
         }
@@ -671,6 +678,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 if (data.responseType === 'SUCCESS') {
                     this.nameResolution = true;
                     this.loadingState = ClrLoadingState.DEFAULT;
+                    this.errorNotification = null;
                 } else if (data.responseType === 'ERROR') {
                     this.nameResolution = false;
                     this.errorNotification = data.msg;

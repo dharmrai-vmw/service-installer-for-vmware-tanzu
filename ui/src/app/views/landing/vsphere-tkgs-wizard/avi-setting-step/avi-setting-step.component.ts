@@ -41,6 +41,7 @@ const SupervisedField = ['aviControllerFqdn', 'aviControllerIp', 'aviControllerF
 export class AVINetworkSettingComponent extends StepFormDirective implements OnInit {
     @Input() providerType: string;
     @Input() errorNotification: any;
+    ModesOfDeployment = ['orchestrated', 'non-orchestrated'];
 
     loading: boolean = false;
     loadingState: ClrLoadingState = ClrLoadingState.DEFAULT;
@@ -84,6 +85,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
     private aviClusterVipEndRange: string;
     private aviClusterVipSeStartRange: string;
     private aviClusterVipSeEndRange: string;
+    // private modeOfDeployment;
 
     constructor(private validationService: ValidationService,
                 private wizardFormService: VSphereWizardFormService,
@@ -102,6 +104,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 Validators.required
             ])
         );
+        // this.formGroup.addControl('modeOfDeployment', new FormControl('orchestrated', []));
         this.formGroup.addControl(
             'aviSize',
             new FormControl('', [
@@ -326,6 +329,10 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 this.subscription = this.dataService.currentAviHA.subscribe(
                     (enableHa) => this.enableHA = enableHa);
                 this.formGroup.get('enableHA').setValue(this.enableHA);
+                // this.subscription = this.dataService.currentModeOfDeployment.subscribe(
+                //     (mode) => this.modeOfDeployment = mode);
+                // this.formGroup.get('modeOfDeployment').setValue(this.modeOfDeployment);
+
                 if (this.enableHA) {
                     this.toggleEnableHA();
                     this.subscription = this.dataService.currentAviFqdn02.subscribe(
@@ -653,6 +660,7 @@ export class AVINetworkSettingComponent extends StepFormDirective implements OnI
                 if (data.responseType === 'SUCCESS') {
                     this.nameResolution = true;
                     this.loadingState = ClrLoadingState.DEFAULT;
+                    this.errorNotification = null;
                 } else if (data.responseType === 'ERROR') {
                     this.nameResolution = false;
                     this.errorNotification = data.msg;

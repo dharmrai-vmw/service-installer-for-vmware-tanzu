@@ -34,14 +34,14 @@ def fetch_vmc_env(spec):
         response_body = {
             "responseType": "ERROR",
             "msg": f"Failed to capture VMC setup details; {ex}",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         current_app.logger.error(response_body['msg'])
         return jsonify(response_body), 500
     response_body = {
         "responseType": "SUCCESS",
         "msg": "Captured VMC setup details successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info(response_body['msg'])
     return jsonify(response_body), 200
@@ -57,7 +57,7 @@ def login():
         response_body = {
             "responseType": "ERROR",
             "msg": "No env headers passed",
-            "ERROR_CODE": "400"
+            "STATUS_CODE": "400"
         }
         current_app.logger.error(response_body['msg'])
         return jsonify(response_body), 400
@@ -106,7 +106,7 @@ def login():
                 d = {
                     "responseType": "ERROR",
                     "msg": "VC Content Library Name is not provided",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 current_app.logger.error("VC content library name not provided")
                 return jsonify(d), 500
@@ -115,7 +115,7 @@ def login():
                 d = {
                     "responseType": "ERROR",
                     "msg": "VC AVI Ova Name is not provided",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 current_app.logger.error("VC avi ova name not provided")
                 return jsonify(d), 500
@@ -126,7 +126,7 @@ def login():
             response_body = {
                 "responseType": "ERROR",
                 "msg": "Un-recognised env",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             current_app.logger.error("Un recognised env")
             return jsonify(response_body), 500
@@ -134,14 +134,14 @@ def login():
         response_body = {
             "responseType": "ERROR",
             "msg": str(ex) + " check the input file",
-            "ERROR_CODE": 400
+            "STATUS_CODE": 400
         }
         current_app.logger.error("Failed to get environment details please check the input file " + str(ex))
         return jsonify(response_body), 500
     response_body = {
         "responseType": "SUCCESS",
         "msg": "Environment details captured successfully",
-        "ERROR_CODE": 200
+        "STATUS_CODE": 200
     }
     current_app.logger.info(response_body['msg'])
     return jsonify(response_body), 200

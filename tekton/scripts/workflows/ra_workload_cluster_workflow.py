@@ -9,15 +9,18 @@ import base64
 import time
 from constants.constants import TKG_EXTENSIONS_ROOT, Constants, Paths, Task, ControllerLocation, \
     Cloud, VrfType, RegexPattern, AkoType, AppName, Versions, ResourcePoolAndFolderName, PLAN, \
-    Sizing, ClusterType, Repo, Avi_Version, Avi_Tkgs_Version
+    Sizing, ClusterType, Repo, Avi_Version, Avi_Tkgs_Version, Env
 from lib.kubectl_client import KubectlClient
 from lib.tkg_cli_client import TkgCliClient
 from model.run_config import RunConfig
+from util.common_utils import envCheck
+from workflows.ra_nsxt_workflow import RaNSXTWorkflow
 from util.cmd_helper import CmdHelper
 from util.file_helper import FileHelper
 from util.git_helper import Git
 from util.logger_helper import LoggerHelper, log, log_debug
 from util.cmd_runner import RunCmd
+from lib.nsxt_client import NsxtClient
 from workflows.cluster_common_workflow import ClusterCommonWorkflow
 from util.common_utils import downloadAndPushKubernetesOvaMarketPlace, getCloudStatus, \
     getVrfAndNextRoutId, addStaticRoute, getVipNetworkIpNetMask, getSECloudStatus, \
@@ -27,7 +30,8 @@ from util.common_utils import downloadAndPushKubernetesOvaMarketPlace, getCloudS
     getLibraryId, getBodyResourceSpec, cidr_to_netmask, getCountOfIpAdress, seperateNetmaskAndIp, configureKubectl, \
     createClusterFolder, supervisorTMC, checkTmcEnabled, get_alias_name, convertStringToCommaSeperated, \
     checkClusterVersionCompatibility, checkToEnabled, checkTSMEnabled, checkDataProtectionEnabled, \
-    enable_data_protection
+    enable_data_protection, checkEnableIdentityManagement, checkPinnipedInstalled
+from util.oidc_helper import createRbacUsers
 from util.ShellHelper import runShellCommandAndReturnOutput
 from util.avi_api_helper import isAviHaEnabled, obtain_second_csrf
 from workflows.ra_mgmt_cluster_workflow import RaMgmtClusterWorkflow
@@ -40,7 +44,7 @@ import yaml
 import requests
 from model.vsphereSpec import VsphereMasterSpec
 from util.tkg_util import TkgUtil
-
+from util.cleanup_util import CleanUpUtil
 
 logger = LoggerHelper.get_logger(Path(__file__).stem)
 
@@ -77,6 +81,21 @@ class RaWorkloadClusterWorkflow:
         self.rcmd = RunCmd()
         self.clusterops = RaMgmtClusterWorkflow(self.run_config)
 
+        self.env = envCheck(self.run_config)
+        if self.env[1] != 200:
+            logger.error("Wrong env provided " + self.env[0])
+            d = {
+                "responseType": "ERROR",
+                "msg": "Wrong env provided " + self.env[0],
+                "ERROR_CODE": 500
+            }
+            return json.dumps(d), 500
+        self.env = self.env[0]
+        self.nsxObj = NsxtClient(self.run_config)
+
+        self.isEnvTkgs_ns = TkgUtil.isEnvTkgs_ns(self.jsonspec)
+        self.isEnvTkgs_wcp = TkgUtil.isEnvTkgs_wcp(self.jsonspec)
+
         check_env_output = checkenv(self.jsonspec)
         if check_env_output is None:
             msg = "Failed to connect to VC. Possible connection to VC is not available or " \
@@ -85,6 +104,12 @@ class RaWorkloadClusterWorkflow:
         self.isEnvTkgs_wcp = TkgUtil.isEnvTkgs_wcp(self.jsonspec)
         self.isEnvTkgs_ns = TkgUtil.isEnvTkgs_ns(self.jsonspec)
         self.get_vcenter_details()
+        self.cleanup_obj = CleanUpUtil()
+        if self.isEnvTkgs_wcp or self.isEnvTkgs_ns:
+            self.wrkld_cluster_name = self.jsonspec['tkgsComponentSpec']["tkgsVsphereNamespaceSpec"][
+                'tkgsVsphereWorkloadClusterSpec']['tkgsVsphereWorkloadClusterName']
+        else:
+            self.wrkld_cluster_name = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadClusterName']
 
     def get_vcenter_details(self):
         """
@@ -204,29 +229,51 @@ class RaWorkloadClusterWorkflow:
         refToken = self.jsonspec['envSpec']['marketplaceSpec']['refreshToken']
         avi_fqdn = self.jsonspec['tkgComponentSpec']['aviComponents']['aviController01Fqdn']
         ha_field = self.jsonspec['tkgComponentSpec']['aviComponents']['enableAviHa']
-        if refToken:
-            if not (self.isEnvTkgs_wcp or self.isEnvTkgs_ns):
-                logger.info("Kubernetes OVA configs for workload cluster")
+        if self.env == Env.VSPHERE or self.env == Env.VCF:
+            if not (self.isEnvTkgs_ns or self.isEnvTkgs_wcp):
                 kubernetes_ova_os = self.jsonspec["tkgWorkloadComponents"]["tkgWorkloadBaseOs"]
                 kubernetes_ova_version = self.jsonspec["tkgWorkloadComponents"]["tkgWorkloadKubeVersion"]
-                logger.info("Kubernetes OVA configs for management cluster")
-                down_status = downloadAndPushKubernetesOvaMarketPlace(self.jsonspec,
-                                                                      kubernetes_ova_version,
-                                                                      kubernetes_ova_os)
-                if down_status[0] is None:
-                    logger.error(down_status[1])
+                if refToken:
+                    logger.info("Kubernetes OVA configs for workload cluster")
+                    down_status = downloadAndPushKubernetesOvaMarketPlace(self.jsonspec, kubernetes_ova_version, kubernetes_ova_os)
+                    if down_status[0] is None:
+                        logger.error(down_status[1])
+                        d = {
+                            "responseType": "ERROR",
+                            "msg": down_status[1],
+                            "ERROR_CODE": 500
+                        }
+                        return json.dumps(d), 500
+                else:
+                    logger.info("MarketPlace refresh token is not provided, skipping the download of kubernetes ova")
+        workload_network_name = self.jsonspec['tkgWorkloadDataNetwork'][
+            'tkgWorkloadDataNetworkName']
+        if self.env == Env.VCF:
+            try:
+                gatewayAddress = self.jsonspec['tkgWorkloadDataNetwork'][
+                    'tkgWorkloadDataNetworkGatewayCidr']
+                dnsServers = self.jsonspec['envSpec']['infraComponents']['dnsServersIp']
+                network = self.nsxObj.getNetworkIp(gatewayAddress)
+                shared_segment = self.nsxObj.createNsxtSegment(workload_network_name, gatewayAddress,
+                                                None,
+                                                None, dnsServers, network, False)
+                if shared_segment[1] != 200:
+                    logger.error("Failed to create shared segments" + str(shared_segment[0]["msg"]))
                     d = {
                         "responseType": "ERROR",
-                        "msg": down_status[1],
+                        "msg": "Failed to create shared segments" + str(shared_segment[0]["msg"]),
                         "ERROR_CODE": 500
                     }
                     return json.dumps(d), 500
-        else:
-            logger.info( "MarketPlace refresh token is not provided, skipping the download "
-                         "of kubernetes ova")
-        workload_network_name = self.jsonspec['tkgWorkloadDataNetwork']['tkgWorkloadDataNetworkName']
-        avi_fqdn = self.jsonspec['tkgComponentSpec']['aviComponents'][
-            'aviController01Fqdn']
+            except Exception as e:
+                logger.error("Failed to configure vcf workload " + str(e))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to configure vcf workload " + str(e),
+                    "ERROR_CODE": 500
+                }
+                return json.dumps(d), 500
+        avi_fqdn = self.jsonspec['tkgComponentSpec']['aviComponents']['aviController01Fqdn']
         ##########################################################
         ha_field = self.jsonspec['tkgComponentSpec']['aviComponents']['enableAviHa']
         if isAviHaEnabled(ha_field):
@@ -535,293 +582,358 @@ class RaWorkloadClusterWorkflow:
 
     @log("Deploying Workload Cluster...")
     def deploy(self):
-        json_dict = self.jsonspec
-        vsSpec = VsphereMasterSpec.parse_obj(json_dict)
-        aviVersion = Avi_Tkgs_Version.VSPHERE_AVI_VERSION if TkgUtil.isEnvTkgs_ns(self.jsonspec) else Avi_Version.VSPHERE_AVI_VERSION
-        vcpass_base64 = self.jsonspec['envSpec']['vcenterDetails']['vcenterSsoPasswordBase64']
-        password = CmdHelper.decode_base64(vcpass_base64)
-        vcenter_username = self.jsonspec['envSpec']['vcenterDetails']['vcenterSsoUser']
-        vcenter_ip = self.jsonspec['envSpec']['vcenterDetails']['vcenterAddress']
-        cluster_name = self.jsonspec['envSpec']['vcenterDetails']['vcenterCluster']
-        data_center = self.jsonspec['envSpec']['vcenterDetails']['vcenterDatacenter']
-        data_store = self.jsonspec['envSpec']['vcenterDetails']['vcenterDatastore']
-        parent_resourcepool = self.jsonspec['envSpec']['vcenterDetails']['resourcePoolName']
-
-        logger.info("Setting up SE groups for workload cluster...")
-        network_config = self.networkConfig(aviVersion, cluster_name,data_store)
-        if network_config[1] != 200:
-            logger.error(network_config[0].json['msg'])
-            d = {
-                "responseType": "ERROR",  
-                "msg": "Failed to Config workload cluster " + str(network_config[0].json['msg']),
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        create = createResourceFolderAndWait(vcenter_ip, vcenter_username, password,
-                                             cluster_name, data_center,
-                                             ResourcePoolAndFolderName.WORKLOAD_RESOURCE_POOL_VSPHERE,
-                                             ResourcePoolAndFolderName.WORKLOAD_FOLDER_VSPHERE,
-                                             parent_resourcepool)
-        if create[1] != 200:
-            logger.error(
-                "Failed to create resource pool and folder " + create[0].json['msg'])
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to create resource pool " + str(create[0].json['msg']),
-                "ERROR_CODE": 500
-            }
-            raise Exception
         try:
-            #with open('/root/.ssh/id_rsa.pub', 'r') as f:
-            #   re = f.readline()
-            re = runSsh(vcenter_username)
-        except Exception as e:
-            logger.error("Failed to ssh key from config file " + str(e))
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to ssh key from config file " + str(e),
-                "ERROR_CODE": 500
-            }
-            raise Exception
+            json_dict = self.jsonspec
+            vsSpec = VsphereMasterSpec.parse_obj(json_dict)
+            aviVersion = Avi_Tkgs_Version.VSPHERE_AVI_VERSION if TkgUtil.isEnvTkgs_ns(self.jsonspec) else Avi_Version.VSPHERE_AVI_VERSION
+            vcpass_base64 = self.jsonspec['envSpec']['vcenterDetails']['vcenterSsoPasswordBase64']
+            password = CmdHelper.decode_base64(vcpass_base64)
+            vcenter_username = self.jsonspec['envSpec']['vcenterDetails']['vcenterSsoUser']
+            vcenter_ip = self.jsonspec['envSpec']['vcenterDetails']['vcenterAddress']
+            cluster_name = self.jsonspec['envSpec']['vcenterDetails']['vcenterCluster']
+            data_center = self.jsonspec['envSpec']['vcenterDetails']['vcenterDatacenter']
+            data_store = self.jsonspec['envSpec']['vcenterDetails']['vcenterDatastore']
+            parent_resourcepool = self.jsonspec['envSpec']['vcenterDetails']['resourcePoolName']
 
-        # Init tanzu cli plugins
-        tanzu_init_cmd = "tanzu plugin sync"
-        command_status = self.rcmd.run_cmd_output(tanzu_init_cmd)
-        logger.debug("Tanzu plugin output: {}".format(command_status))
+            logger.info("Setting up SE groups for workload cluster...")
+            network_config = self.networkConfig(aviVersion, cluster_name,data_store)
+            if network_config[1] != 200:
+                logger.error(network_config[0].json['msg'])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to Config workload cluster " + str(network_config[0].json['msg']),
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            if self.env == Env.VCF:
+                try:
+                    RaNSXTWorkflow(self.run_config).configure_workload_nsxt_config()
+                except Exception as e:
+                    logger.error("Failed to configure vcf for workload " + str(e))
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": "Failed to configure vcf for workloag" + str(e),
+                        "ERROR_CODE": 500
+                    }
+                    return json.dumps(d), 500
+            create = createResourceFolderAndWait(vcenter_ip, vcenter_username, password,
+                                                 cluster_name, data_center,
+                                                 ResourcePoolAndFolderName.WORKLOAD_RESOURCE_POOL_VSPHERE,
+                                                 ResourcePoolAndFolderName.WORKLOAD_FOLDER_VSPHERE,
+                                                 parent_resourcepool)
+            if create[1] != 200:
+                logger.error(
+                    "Failed to create resource pool and folder " + create[0].json['msg'])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to create resource pool " + str(create[0].json['msg']),
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            try:
+                #with open('/root/.ssh/id_rsa.pub', 'r') as f:
+                #   re = f.readline()
+                re = runSsh(vcenter_username)
+            except Exception as e:
+                logger.error("Failed to ssh key from config file " + str(e))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to ssh key from config file " + str(e),
+                    "ERROR_CODE": 500
+                }
+                raise Exception
 
-        podRunninng = ["tanzu", "cluster", "list"]
-        command_status = runShellCommandAndReturnOutputAsList(podRunninng)
-        if command_status[1] != 0:
-            logger.error("Failed to run command to check status of pods")
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to run command to check status of pods",
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        tmc_required = str(self.jsonspec['envSpec']['saasEndpoints']['tmcDetails']['tmcAvailability'])
-        tmc_flag = False
-        if tmc_required.lower() == "true":
-            tmc_flag = True
-        elif tmc_required.lower() == "false":
-            tmc_flag = False
-            logger.info("Tmc registration is disabled")
-        else:
-            logger.error("Wrong tmc selection attribute provided " + tmc_required)
-            d = {
-                "responseType": "ERROR",
-                "msg": "Wrong tmc selection attribute provided " + tmc_required,
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        cluster_plan = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadDeploymentType']
-        if cluster_plan == PLAN.DEV_PLAN:
-            additional_command = ""
-            machineCount =  self.jsonspec['tkgWorkloadComponents']['tkgWorkloadWorkerMachineCount']
-        elif cluster_plan == PLAN.PROD_PLAN:
-            additional_command = "--high-availability"
-            machineCount = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadWorkerMachineCount']
-        else:
-            logger.error("Un supported control plan provided please specify prod or dev " +
-                         cluster_plan)
-            d = {
-                "responseType": "ERROR",
-                "msg": "Un supported control plan provided please specify prod or dev " +
-                       cluster_plan,
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        size = str(self.jsonspec['tkgWorkloadComponents']['tkgWorkloadSize'])
-        if size.lower() == "medium":
-            cpu = Sizing.medium['CPU']
-            memory = Sizing.medium['MEMORY']
-            disk = Sizing.medium['DISK']
-        elif size.lower() == "large":
-            cpu = Sizing.large['CPU']
-            memory = Sizing.large['MEMORY']
-            disk = Sizing.large['DISK']
-        elif size.lower() == "extra-large":
-            cpu = Sizing.extraLarge['CPU']
-            memory = Sizing.extraLarge['MEMORY']
-            disk = Sizing.extraLarge['DISK']
-        elif size.lower() == "custom":
-            cpu = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadCpuSize']
-            disk = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadStorageSize']
-            control_plane_mem_gb = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadMemorySize']
-            memory = str(int(control_plane_mem_gb) * 1024)
-        else:
-            logger.error("Un supported cluster size please specify "
-                         "medium/large/extra-large/custom " + size)
-            d = {
-                "responseType": "ERROR",
-                "msg": "Un supported cluster size please specify"
-                       " medium/large/extra-large/custom " + size,
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        deployWorkload = False
-        workload_cluster_name = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadClusterName']
-        management_cluster = self.jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgMgmtClusterName']
-        workload_network = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadNetworkName']
-        vsphere_password = password
-        _base64_bytes = vsphere_password.encode('ascii')
-        _enc_bytes = base64.b64encode(_base64_bytes)
-        vsphere_password = _enc_bytes.decode('ascii')
+            # Init tanzu cli plugins
+            tanzu_init_cmd = "tanzu plugin sync"
+            command_status = self.rcmd.run_cmd_output(tanzu_init_cmd)
+            logger.debug("Tanzu plugin output: {}".format(command_status))
 
-        datacenter_path = "/" + data_center
-        datastore_path = datacenter_path + "/datastore/" + data_store
-        workload_folder_path = datacenter_path + "/vm/" +\
-                               ResourcePoolAndFolderName.WORKLOAD_FOLDER_VSPHERE
-        if parent_resourcepool:
-            workload_resource_path = datacenter_path + "/host/" + cluster_name + "/Resources/" + \
-                                     parent_resourcepool + "/" + \
-                                     ResourcePoolAndFolderName.WORKLOAD_RESOURCE_POOL_VSPHERE
-        else:
-            workload_resource_path = datacenter_path + "/host/" + cluster_name + "/Resources/" +\
-                                     ResourcePoolAndFolderName.WORKLOAD_RESOURCE_POOL_VSPHERE
-        workload_network_path = getNetworkFolder(workload_network, vcenter_ip, vcenter_username,
-                                                 password)
-        if not workload_network_path:
-            logger.error("Network folder not found for " + workload_network)
-            d = {
-                "responseType": "ERROR",
-                "msg": "Network folder not found for " + workload_network,
-                "ERROR_CODE": 500
-            }
-            raise Exception
-
-        logger.info("Deploying workload cluster using tanzu cli")
-        deploy_status = deployCluster(workload_cluster_name, cluster_plan,
-                                                  data_center, data_store, workload_folder_path,
-                                                  workload_network_path,
-                                                  vsphere_password,
-                                                  workload_resource_path, vcenter_ip, re,
-                                                  vcenter_username, machineCount,
-                                                  size, ClusterType.WORKLOAD, vsSpec, self.jsonspec)
-        if deploy_status[0] is None:
-            logger.error("Failed to deploy workload cluster " + deploy_status[1])
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to deploy workload cluster " + deploy_status[1],
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        isCheck = True
-        count = 0
-        if isCheck:
+            podRunninng = ["tanzu", "cluster", "list"]
             command_status = runShellCommandAndReturnOutputAsList(podRunninng)
             if command_status[1] != 0:
-                logger.error(
-                    "Failed to check pods are running " + str(command_status[0]))
+                logger.error("Failed to run command to check status of pods")
                 d = {
                     "responseType": "ERROR",
-                    "msg": "Failed to check pods are running " + str(command_status[0]),
+                    "msg": "Failed to run command to check status of pods",
                     "ERROR_CODE": 500
                 }
                 raise Exception
-            if verifyPodsAreRunning(workload_cluster_name, command_status[0], RegexPattern.running):
+            tmc_required = str(self.jsonspec['envSpec']['saasEndpoints']['tmcDetails']['tmcAvailability'])
+            tmc_flag = False
+            if tmc_required.lower() == "true":
+                tmc_flag = True
+            elif tmc_required.lower() == "false":
+                tmc_flag = False
+                logger.info("Tmc registration is deactivated")
+            else:
+                logger.error("Wrong tmc selection attribute provided " + tmc_required)
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Wrong tmc selection attribute provided " + tmc_required,
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            cluster_plan = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadDeploymentType']
+            if cluster_plan == PLAN.DEV_PLAN:
+                additional_command = ""
+                machineCount =  self.jsonspec['tkgWorkloadComponents']['tkgWorkloadWorkerMachineCount']
+            elif cluster_plan == PLAN.PROD_PLAN:
+                additional_command = "--high-availability"
+                machineCount = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadWorkerMachineCount']
+            else:
+                logger.error("Un supported control plan provided please specify prod or dev " +
+                             cluster_plan)
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Un supported control plan provided please specify prod or dev " +
+                           cluster_plan,
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            size = str(self.jsonspec['tkgWorkloadComponents']['tkgWorkloadSize'])
+            if size.lower() == "medium":
+                cpu = Sizing.medium['CPU']
+                memory = Sizing.medium['MEMORY']
+                disk = Sizing.medium['DISK']
+            elif size.lower() == "large":
+                cpu = Sizing.large['CPU']
+                memory = Sizing.large['MEMORY']
+                disk = Sizing.large['DISK']
+            elif size.lower() == "extra-large":
+                cpu = Sizing.extraLarge['CPU']
+                memory = Sizing.extraLarge['MEMORY']
+                disk = Sizing.extraLarge['DISK']
+            elif size.lower() == "custom":
+                cpu = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadCpuSize']
+                disk = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadStorageSize']
+                control_plane_mem_gb = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadMemorySize']
+                memory = str(int(control_plane_mem_gb) * 1024)
+            else:
+                logger.error("Un supported cluster size please specify "
+                             "medium/large/extra-large/custom " + size)
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Un supported cluster size please specify"
+                           " medium/large/extra-large/custom " + size,
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            deployWorkload = False
+            workload_cluster_name = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadClusterName']
+            management_cluster = self.jsonspec['tkgComponentSpec']['tkgMgmtComponents']['tkgMgmtClusterName']
+            workload_network = self.jsonspec['tkgWorkloadComponents']['tkgWorkloadNetworkName']
+            vsphere_password = password
+            _base64_bytes = vsphere_password.encode('ascii')
+            _enc_bytes = base64.b64encode(_base64_bytes)
+            vsphere_password = _enc_bytes.decode('ascii')
+
+            datacenter_path = "/" + data_center
+            datastore_path = datacenter_path + "/datastore/" + data_store
+            workload_folder_path = datacenter_path + "/vm/" +\
+                                   ResourcePoolAndFolderName.WORKLOAD_FOLDER_VSPHERE
+            if parent_resourcepool:
+                workload_resource_path = datacenter_path + "/host/" + cluster_name + "/Resources/" + \
+                                         parent_resourcepool + "/" + \
+                                         ResourcePoolAndFolderName.WORKLOAD_RESOURCE_POOL_VSPHERE
+            else:
+                workload_resource_path = datacenter_path + "/host/" + cluster_name + "/Resources/" +\
+                                         ResourcePoolAndFolderName.WORKLOAD_RESOURCE_POOL_VSPHERE
+            workload_network_path = getNetworkFolder(workload_network, vcenter_ip, vcenter_username,
+                                                     password)
+            if not workload_network_path:
+                logger.error("Network folder not found for " + workload_network)
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Network folder not found for " + workload_network,
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+
+            logger.info("Deploying workload cluster using tanzu cli")
+            deploy_status = deployCluster(workload_cluster_name, cluster_plan,
+                                                      data_center, data_store, workload_folder_path,
+                                                      workload_network_path,
+                                                      vsphere_password,
+                                                      workload_resource_path, vcenter_ip, re,
+                                                      vcenter_username, machineCount,
+                                                      size, ClusterType.WORKLOAD, vsSpec, self.jsonspec, self.env)
+            if deploy_status[0] is None:
+                logger.error("Failed to deploy workload cluster " + deploy_status[1])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to deploy workload cluster " + deploy_status[1],
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            isCheck = True
+            count = 0
+            if isCheck:
+                command_status = runShellCommandAndReturnOutputAsList(podRunninng)
+                if command_status[1] != 0:
+                    logger.error(
+                        "Failed to check pods are running " + str(command_status[0]))
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": "Failed to check pods are running " + str(command_status[0]),
+                        "ERROR_CODE": 500
+                    }
+                    raise Exception
+                if verifyPodsAreRunning(workload_cluster_name, command_status[0], RegexPattern.running):
+                    found = True
+                while not verifyPodsAreRunning(workload_cluster_name, command_status[0],
+                                               RegexPattern.running) and count < 60:
+                    command_status_next = runShellCommandAndReturnOutputAsList(podRunninng)
+                    if verifyPodsAreRunning(workload_cluster_name, command_status_next[0],
+                                            RegexPattern.running):
+                        found = True
+                        break
+                    count = count + 1
+                    time.sleep(30)
+                    logger.info("Waited for  " + str(count * 30) + "s, retrying.")
+            if not found:
+                logger.error(
+                    workload_cluster_name + " is not running on waiting " + str(count * 30) + "s")
+                d = {
+                    "responseType": "ERROR",
+                    "msg": workload_cluster_name + " is not running on waiting " + str(count * 30) + "s",
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            commands = ["tanzu", "management-cluster", "kubeconfig", "get", management_cluster,
+                        "--admin"]
+            kubeContextCommand = grabKubectlCommand(commands, RegexPattern.SWITCH_CONTEXT_KUBECTL)
+            if kubeContextCommand is None:
+                logger.error("Failed to get switch to management cluster context command")
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get switch to management cluster context command",
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
+            status = runShellCommandAndReturnOutputAsList(lisOfSwitchContextCommand)
+            if status[1] != 0:
+                logger.error(
+                    "Failed to get switch to management cluster context " + str(status[0]))
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Failed to get switch to management cluster context " + str(status[0]),
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            lisOfCommand = ["kubectl", "label", "cluster",
+                            workload_cluster_name, AkoType.KEY + "=" + AkoType.type_ako_set]
+            status = runShellCommandAndReturnOutputAsList(lisOfCommand)
+            if status[1] != 0:
+                if not str(status[0]).__contains__("already has a value"):
+                    logger.error("Failed to apply ako label " + str(status[0]))
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": "Failed to apply ako label " + str(status[0]),
+                        "ERROR_CODE": 500
+                    }
+                    raise Exception
+            else:
+                logger.info("Status: {}".format(status[0]))
+
+            podRunninng_ako_main = ["kubectl", "get", "pods", "-A"]
+            podRunninng_ako_grep = ["grep", AppName.AKO]
+            count_ako = 0
+            command_status_ako = grabPipeOutput(podRunninng_ako_main, podRunninng_ako_grep)
+            found = False
+            if verifyPodsAreRunning(AppName.AKO, command_status_ako[0], RegexPattern.RUNNING):
                 found = True
-            while not verifyPodsAreRunning(workload_cluster_name, command_status[0],
-                                           RegexPattern.running) and count < 60:
-                command_status_next = runShellCommandAndReturnOutputAsList(podRunninng)
-                if verifyPodsAreRunning(workload_cluster_name, command_status_next[0],
-                                        RegexPattern.running):
+            while not verifyPodsAreRunning(AppName.AKO, command_status_ako[0],
+                                           RegexPattern.RUNNING) and count_ako < 20:
+                command_status = grabPipeOutput(podRunninng_ako_main, podRunninng_ako_grep)
+                if verifyPodsAreRunning(AppName.AKO, command_status[0], RegexPattern.RUNNING):
                     found = True
                     break
-                count = count + 1
+                count_ako = count_ako + 1
                 time.sleep(30)
-                logger.info("Waited for  " + str(count * 30) + "s, retrying.")
-        if not found:
-            logger.error(
-                workload_cluster_name + " is not running on waiting " + str(count * 30) + "s")
-            d = {
-                "responseType": "ERROR",
-                "msg": workload_cluster_name + " is not running on waiting " + str(count * 30) + "s",
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        commands = ["tanzu", "management-cluster", "kubeconfig", "get", management_cluster,
-                    "--admin"]
-        kubeContextCommand = grabKubectlCommand(commands, RegexPattern.SWITCH_CONTEXT_KUBECTL)
-        if kubeContextCommand is None:
-            logger.error("Failed to get switch to management cluster context command")
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to get switch to management cluster context command",
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        lisOfSwitchContextCommand = str(kubeContextCommand).split(" ")
-        status = runShellCommandAndReturnOutputAsList(lisOfSwitchContextCommand)
-        if status[1] != 0:
-            logger.error(
-                "Failed to get switch to management cluster context " + str(status[0]))
-            d = {
-                "responseType": "ERROR",
-                "msg": "Failed to get switch to management cluster context " + str(status[0]),
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        lisOfCommand = ["kubectl", "label", "cluster",
-                        workload_cluster_name, AkoType.KEY + "=" + AkoType.type_ako_set]
-        status = runShellCommandAndReturnOutputAsList(lisOfCommand)
-        if status[1] != 0:
-            if not str(status[0]).__contains__("already has a value"):
-                logger.error("Failed to apply ako label " + str(status[0]))
+                logger.info("Waited for  " + str(count_ako * 30) + "s, retrying.")
+            if not found:
+                logger.error("Ako pods are not running on waiting " + str(count_ako * 30))
                 d = {
                     "responseType": "ERROR",
-                    "msg": "Failed to apply ako label " + str(status[0]),
+                    "msg": "Ako pods are not running on waiting " + str(count_ako * 30),
                     "ERROR_CODE": 500
                 }
                 raise Exception
-        else:
-            logger.info("Status: {}".format(status[0]))
 
-        podRunninng_ako_main = ["kubectl", "get", "pods", "-A"]
-        podRunninng_ako_grep = ["grep", AppName.AKO]
-        count_ako = 0
-        command_status_ako = grabPipeOutput(podRunninng_ako_main, podRunninng_ako_grep)
-        found = False
-        if verifyPodsAreRunning(AppName.AKO, command_status_ako[0], RegexPattern.RUNNING):
-            found = True
-        while not verifyPodsAreRunning(AppName.AKO, command_status_ako[0],
-                                       RegexPattern.RUNNING) and count_ako < 20:
-            command_status = grabPipeOutput(podRunninng_ako_main, podRunninng_ako_grep)
-            if verifyPodsAreRunning(AppName.AKO, command_status[0], RegexPattern.RUNNING):
-                found = True
-                break
-            count_ako = count_ako + 1
-            time.sleep(30)
-            logger.info("Waited for  " + str(count_ako * 30) + "s, retrying.")
-        if not found:
-            logger.error("Ako pods are not running on waiting " + str(count_ako * 30))
+            logger.info("Ako pods are running on waiting " + str(count_ako * 30))
+            connectToWorkload = self.connectToWorkLoadCluster()
+            if connectToWorkload[1] != 200:
+                logger.error("Switching context to workload failed " +
+                             connectToWorkload[0].json['msg'])
+                d = {
+                    "responseType": "ERROR",
+                    "msg": "Switching context to workload failed " + connectToWorkload[0].json['msg'],
+                    "ERROR_CODE": 500
+                }
+                raise Exception
+            logger.info(
+                "Succesfully configured workload cluster and ako pods are running on waiting " + str(
+                    count_ako * 30))
+            if checkEnableIdentityManagement(self.env, self.jsonspec):
+                logger.info("Validating pinniped installation status")
+                check_pinniped = checkPinnipedInstalled()
+                if check_pinniped[1] != 200:
+                    logger.error(check_pinniped[0].json['msg'])
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": check_pinniped[0].json['msg'],
+                        "ERROR_CODE": 500
+                    }
+                    return json.dumps(d), 500
+                if self.env == Env.VSPHERE:
+                    cluster_admin_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec']['clusterAdminUsers']
+                    admin_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'adminUsers']
+                    edit_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'editUsers']
+                    view_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'viewUsers']
+                elif self.env == Env.VCF:
+                    cluster_admin_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'clusterAdminUsers']
+                    admin_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'adminUsers']
+                    edit_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'editUsers']
+                    view_users = \
+                        self.jsonspec['tkgWorkloadComponents']['tkgWorkloadRbacUserRoleSpec'][
+                            'viewUsers']
+                rbac_user_status = createRbacUsers(workload_cluster_name, isMgmt=False, env=self.env, edit_users=edit_users,
+                                                cluster_admin_users=cluster_admin_users, admin_users=admin_users,
+                                                view_users=view_users)
+                if rbac_user_status[1] != 200:
+                    logger.error(rbac_user_status[0].json['msg'])
+                    d = {
+                        "responseType": "ERROR",
+                        "msg": rbac_user_status[0].json['msg'],
+                        "ERROR_CODE": 500
+                    }
+                    return json.dumps(d), 500
+                logger.info("Successfully created RBAC for all the provided users")
+            else:
+                logger.info("Identity Management is not enabled")
             d = {
-                "responseType": "ERROR",
-                "msg": "Ako pods are not running on waiting " + str(count_ako * 30),
-                "ERROR_CODE": 500
+                "responseType": "SUCCESS",
+                "msg": "Successfully deployed  cluster " + workload_cluster_name,
+                "SUCCESS_CODE": 200
             }
-            raise Exception
-
-        logger.info("Ako pods are running on waiting " + str(count_ako * 30))
-        connectToWorkload = self.connectToWorkLoadCluster()
-        if connectToWorkload[1] != 200:
-            logger.error("Switching context to workload failed " +
-                         connectToWorkload[0].json['msg'])
-            d = {
-                "responseType": "ERROR",
-                "msg": "Switching context to workload failed " + connectToWorkload[0].json['msg'],
-                "ERROR_CODE": 500
-            }
-            raise Exception
-        logger.info(
-            "Succesfully configured workload cluster and ako pods are running on waiting " + str(
-                count_ako * 30))
-        d = {
-            "responseType": "SUCCESS",
-            "msg": "Successfully deployed  cluster " + workload_cluster_name,
-            "SUCCESS_CODE": 200
-        }
-        return json.dumps(d), 200
+            return json.dumps(d), 200
+        except Exception as e:
+            logger.error(f"ERROR: Failed to create shared cluster: {e}")
+            self.cleanup_obj.delete_cluster(self.wrkld_cluster_name)
 
     def deploy_saas_workload(self):
 
@@ -839,7 +951,7 @@ class RaWorkloadClusterWorkflow:
             tmc_flag = True
         elif tmc_required.lower() == "false":
             tmc_flag = False
-            logger.info("Tmc registration is disabled")
+            logger.info("Tmc registration is deactivated")
         else:
             logger.error("Wrong tmc selection attribute provided " + tmc_required)
             d = {
@@ -882,7 +994,7 @@ class RaWorkloadClusterWorkflow:
             tmc_flag = True
         elif tsm_required.lower() == "false":
             tmc_flag = False
-            logger.info("Tmc registration is disabled")
+            logger.info("Tmc registration is deactivated")
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Completed SaaS Integration..",

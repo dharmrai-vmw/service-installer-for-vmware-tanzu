@@ -103,7 +103,32 @@
                 </clr-control-error>
             </clr-input-container>
         </div>
-
+        <div class="clr-col-12 clr-col-sm-6 clr-col-lg-4">
+            <clr-select-container [attr.data-step-metadata]="formName">
+                <label i18n="datacenter label">
+                    SUBSCRIBED CONTENT LIBRARY (OPTIONAL)
+                    <clr-tooltip>
+                        <clr-icon aria-live="assertive" a11yTooltipTrigger shape="info-circle" size="22"></clr-icon>
+                        <clr-tooltip-content clrPosition="top-right" clrSize="lg" *clrIfOpen>
+                            <span>
+                                Select name of the content library containing TKRs.
+                                If left blank Service installer creates a Subscribed content library as part of the WCP enablement named: SubscribedAutomation-Lib
+                            </span>
+                        </clr-tooltip-content>
+                    </clr-tooltip>
+                </label>
+                <select clrSelect name="contentLib" formControlName="contentLib">
+                    <option aria-label="blank" title="blank"></option>
+                    <ng-container *ngFor="let contentLib of this.apiClient.contentLibs">
+                        <option [value]="contentLib">
+                            {{contentLib}}
+                        </option>
+                    </ng-container>
+                </select>
+                <!-- Add a empty helper to avoid accessiblity aria-describeby issue -->
+                <clr-control-helper></clr-control-helper>
+            </clr-select-container>
+        </div>
     </div>
     <div class="clr-row">
         <div class="clr-col-12 clr-col-sm-6 clr-col-lg-4">

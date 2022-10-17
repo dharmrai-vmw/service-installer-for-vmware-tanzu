@@ -15,7 +15,7 @@ from common.common_utilities import getVersionOfPackage, loadBomFile, checkAirGa
     waitForProcess, installCertManagerAndContour, deployExtention, getManagementCluster, verifyCluster, \
     switchToManagementContext, checkToEnabled, checkPromethusEnabled, installExtentionFor14, checkRepositoryAdded, loadBomFile, \
     checkTmcEnabled, waitForGrepProcessWithoutChangeDir, getClusterID, connect_to_workload, isWcpEnabled, isClusterRunning, \
-    checkTanzuExtentionEnabled, fluent_bit_enabled, deploy_fluent_bit, checkFluentBitInstalled
+    checkTanzuExtentionEnabled, fluent_bit_enabled, deploy_fluent_bit, checkFluentBitInstalled, check_tkgs_proxy_enabled
 from .oneDot4_extentions import generateYamlFile
 from .oneDot3_extentions import getBomMap, getRepo
 from vmc.sharedConfig.shared_config import certChanging
@@ -30,7 +30,7 @@ def deploy_tkgs_extensions():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Wrong env provided " + env[0],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             env = env[0]
@@ -47,7 +47,7 @@ def deploy_tkgs_extensions():
                 d = {
                     "responseType": "ERROR",
                     "msg": "Required Pre-checks required before TKGs extensions deployment FAILED",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -58,7 +58,7 @@ def deploy_tkgs_extensions():
                 d = {
                     "responseType": "ERROR",
                     "msg": deploy_ext[1],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -67,7 +67,7 @@ def deploy_tkgs_extensions():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Extensions deployed successfully",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
         else:
@@ -75,7 +75,7 @@ def deploy_tkgs_extensions():
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Extensions are not enabled",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
@@ -83,7 +83,7 @@ def deploy_tkgs_extensions():
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while deploying extensions",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -198,6 +198,11 @@ def kappConfiguration():
             create_policy = createPodSecurity()
             if create_policy[0] is None:
                 return None, create_policy[1]
+        proxy_update = kapp_tkgs_proxy_details()
+        if proxy_update[0]:
+            current_app.logger.info(proxy_update[1])
+        else:
+            return None, proxy_update[1]
         kapp_command = ["kubectl", "apply", "-f", "kapp-controller.yaml"]
         output = runShellCommandAndReturnOutputAsList(kapp_command)
         if output[1] != 0:
@@ -220,6 +225,26 @@ def kappConfiguration():
             return None, "Failed to deploy kapp-controller"
     else:
         return "SUCCESS", "kapp-controller is already deployed"
+
+
+def kapp_tkgs_proxy_details():
+    if check_tkgs_proxy_enabled():
+        httpProxy = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec'][
+            'httpProxy']
+        httpsProxy = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec'][
+            'httpsProxy']
+        noProxy = request.get_json(force=True)['tkgsComponentSpec']['tkgServiceConfig']['proxySpec']['noProxy']
+        service_cidr = request.get_json(force=True)['tkgsComponentSpec']['tkgsVsphereNamespaceSpec'][
+            'tkgsVsphereWorkloadClusterSpec']['serviceCidrBlocks']
+        noProxy = "localhost,127.0.0.1," + noProxy + "," + service_cidr
+        inject_values = ["sh", "./common/injectValue.sh", "kapp-controller.yaml", "kapp_tkgs", httpProxy,
+                               httpsProxy, noProxy]
+        inject_values_result = runShellCommandAndReturnOutput(inject_values)
+        if inject_values_result[1] != 0:
+            return False, "Failed to update proxy details in kapp-controller.yaml file " + str(inject_values_result[0])
+        return True, "kapp-controller.yaml updated successfully with proxy details"
+    else:
+        return True, "This is a non-proxy environment"
 
 
 def isSecurityPodRunning():
@@ -338,7 +363,7 @@ def deploy_extensions(env, cluster_name):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to deploy extension" + str(status[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         if str(checkHarborEnabled).lower() == "true":
@@ -358,7 +383,7 @@ def deploy_extensions(env, cluster_name):
                     "responseType": "ERROR",
                     "msg": "Harbor FQDN and password are mandatory for harbor deployment. Please provide both the "
                            "details",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             state = installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, cluster_name, env)
@@ -367,7 +392,7 @@ def deploy_extensions(env, cluster_name):
                 d = {
                     "responseType": "ERROR",
                     "msg": state[0].json['msg'],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
             else:
@@ -378,16 +403,16 @@ def deploy_extensions(env, cluster_name):
             '''d = {
                 "responseType": "ERROR",
                 "msg": "Tanzu observability is enabled, skipping prometheus and grafana deployment",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200'''
         else:
             if len(listOfExtention) == 0:
-                current_app.logger.info("Prometheus and Grafana are disabled")
+                current_app.logger.info("Prometheus and Grafana are deactivated")
                 '''d = {
                     "responseType": "SUCCESS",
-                    "msg": "Prometheus and Grafana are disabled",
-                    "ERROR_CODE": 200
+                    "msg": "Prometheus and Grafana are deactivated",
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200'''
             else:
@@ -398,7 +423,7 @@ def deploy_extensions(env, cluster_name):
                         d = {
                             "responseType": "ERROR",
                             "msg": monitor_status[0].json['msg'],
-                            "ERROR_CODE": 500
+                            "STATUS_CODE": 500
                         }
                         return jsonify(d), 500
                     current_app.logger.info("Extension - " + extension_name + " deployed successfully")
@@ -415,7 +440,7 @@ def deploy_extensions(env, cluster_name):
                     d = {
                         "responseType": "ERROR",
                         "msg": response[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 current_app.logger.info("Fluent-bit deployed successfully")
@@ -427,7 +452,7 @@ def deploy_extensions(env, cluster_name):
         d = {
             "responseType": "SUCCESS",
             "msg": "Extensions deployed successfully",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
 
@@ -436,7 +461,7 @@ def deploy_extensions(env, cluster_name):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while deploying extensions",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -449,7 +474,7 @@ def tkgsCertManagerandContour(env, cluster_name, service_name):
             d = {
                 "responseType": "ERROR",
                 "msg": str(status_[0].json['msg']),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         install = installExtentionFor14(service_name, cluster_name, env)
@@ -459,7 +484,7 @@ def tkgsCertManagerandContour(env, cluster_name, service_name):
         d = {
             "responseType": "SUCCESS",
             "msg": "Configured cert-manager and contour extensions successfully",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
     except Exception as e:
@@ -467,7 +492,7 @@ def tkgsCertManagerandContour(env, cluster_name, service_name):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while installing Cert-manager and Contour",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -480,7 +505,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to load the bom data",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         repo = getRepo(env)
@@ -491,7 +516,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
             if monitoringType == Tkg_Extention_names.PROMETHEUS:
                 password = None
                 extention = Tkg_Extention_names.PROMETHEUS
-                bom_map = getBomMap(load_bom, Tkg_Extention_names.PROMETHEUS)
+                #bom_map = getBomMap(load_bom, Tkg_Extention_names.PROMETHEUS)
                 appName = AppName.PROMETHUS
                 namespace = "package-tanzu-system-monitoring"
                 yamlFile = "./prometheus-data-values.yaml"
@@ -509,7 +534,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Password for grafana is mandatory, please add and re-run deployment",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 extention = Tkg_Extention_names.GRAFANA
@@ -519,7 +544,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                 command = ["./common/injectValue.sh", Extentions.GRAFANA_LOCATION + "/grafana-extension.yaml", "fluent_bit",
                            repository + "/" + Extentions.APP_EXTENTION]
                 runShellCommandAndReturnOutputAsList(command)
-                bom_map = getBomMap(load_bom, Tkg_Extention_names.GRAFANA)
+                #bom_map = getBomMap(load_bom, Tkg_Extention_names.GRAFANA)
                 cert_Path = request.get_json(force=True)['tanzuExtensions']['monitoring']['grafanaCertPath']
                 fqdn = request.get_json(force=True)['tanzuExtensions']['monitoring']['grafanaFqdn']
                 certKey_Path = request.get_json(force=True)['tanzuExtensions']['monitoring'][
@@ -530,7 +555,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                 d = {
                     "responseType": "ERROR",
                     "msg": "FQDN for " + extention + " is mandatory, please add and re-run deployment",
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
 
@@ -546,7 +571,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                     d = {
                         "responseType": "ERROR",
                         "msg": "Capture the available Prometheus version",
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 file_status = generateYamlFile(extention, version, certKey_Path, cert_Path, fqdn, password, yamlFile)
@@ -555,7 +580,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                     d = {
                         "responseType": "ERROR",
                         "msg": yamlFile + " generation failed " + str(file_status[0]),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
 
@@ -564,7 +589,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                     d = {
                         "responseType": "ERROR",
                         "msg": update_sc_response[0].json['msg'],
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
 
@@ -597,14 +622,14 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                     d = {
                         "responseType": "ERROR",
                         "msg": extention + " Extension is still not deployed " + str(count * 30),
-                        "ERROR_CODE": 500
+                        "STATUS_CODE": 500
                     }
                     return jsonify(d), 500
                 else:
                     d = {
                         "responseType": "SUCCESS",
                         "msg": appName + " is deployed",
-                        "ERROR_CODE": 200
+                        "STATUS_CODE": 200
                     }
                     return jsonify(d), 200
             else:
@@ -612,7 +637,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
                 d = {
                     "responseType": "SUCCESS",
                     "msg": appName + " is already running",
-                    "ERROR_CODE": 200
+                    "STATUS_CODE": 200
                 }
                 return jsonify(d), 200
         else:
@@ -620,7 +645,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Monitoring extension deployment is not enabled",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
 
@@ -629,7 +654,7 @@ def deploy_monitoring_extentions(env, monitoringType, clusterName):
         d = {
             "responseType": "ERROR",
             "msg": "Failed to  deploy monitoring " + str(e),
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -644,7 +669,7 @@ def updateStorageClass(yamlFile, extension):
             d = {
                 "responseType": "ERROR",
                 "msg": "Command to get storage class name failed.",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -658,7 +683,7 @@ def updateStorageClass(yamlFile, extension):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to obtain storage class name for cluster",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
 
@@ -675,7 +700,7 @@ def updateStorageClass(yamlFile, extension):
             d = {
                 "responseType": "ERROR",
                 "msg": "Wrong extension name provided for updating storage class name - " + extension,
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         inject_sc_response = runShellCommandAndReturnOutput(inject_sc)
@@ -684,7 +709,7 @@ def updateStorageClass(yamlFile, extension):
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to update storage class name " + str(inject_sc_response[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -692,7 +717,7 @@ def updateStorageClass(yamlFile, extension):
             d = {
                 "responseType": "SUCCESS",
                 "msg": extension + " yaml file updated successfully",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
     except Exception as e:
@@ -700,7 +725,7 @@ def updateStorageClass(yamlFile, extension):
         d = {
             "responseType": "ERROR",
             "msg": "Exception occurred while update data file for extensions",
-            "ERROR_CODE": 500
+            "STATUS_CODE": 500
         }
         return jsonify(d), 500
 
@@ -738,7 +763,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": "Contour is not running ",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         if not verify_cert_manager:
@@ -746,7 +771,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": "Cert manager is not running ",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         state = getVersionOfPackage("harbor.tanzu.vmware.com")
@@ -754,7 +779,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get Version of package contour.tanzu.vmware.com",
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Deploying harbor - " + state)
@@ -768,7 +793,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get harbor image url " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         current_app.logger.info("Got harbor url " + str(status[0][0]).replace("'", ""))
@@ -779,7 +804,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to get harbor image url " + str(status[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         os.system("rm -rf " + Paths.CLUSTER_PATH + clusterName + "/harbor-data-values.yaml")
@@ -793,7 +818,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": "Failed to generate password " + str(state_harbor_genrate_psswd[0]),
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         cer = certChanging(harborCertPath, harborCertKeyPath, harborPassword, host,clusterName)
@@ -802,7 +827,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": cer[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         os.system("chmod +x common/injectValue.sh")
@@ -813,7 +838,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": update_sc_resp[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
         else:
@@ -849,7 +874,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "SUCCESS",
                 "msg": "Deployed harbor successfully",
-                "ERROR_CODE": 200
+                "STATUS_CODE": 200
             }
             return jsonify(d), 200
         elif reconcile_failed:
@@ -861,7 +886,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
                 d = {
                     "responseType": "ERROR",
                     "msg": overlay_status[1],
-                    "ERROR_CODE": 500
+                    "STATUS_CODE": 500
                 }
                 return jsonify(d), 500
         else:
@@ -876,7 +901,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             d = {
                 "responseType": "ERROR",
                 "msg": state[0].json['msg'],
-                "ERROR_CODE": 500
+                "STATUS_CODE": 500
             }
             return jsonify(d), 500
 
@@ -884,7 +909,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
         d = {
             "responseType": "SUCCESS",
             "msg": "Deployed harbor successfully",
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
     else:
@@ -894,7 +919,7 @@ def installHarborTkgs(harborCertPath, harborCertKeyPath, harborPassword, host, c
             "responseType": "SUCCESS",
             "msg": "Harbor is already deployed and it's status is - " + out[0].split()[3] + " " +
                    out[0].split()[4],
-            "ERROR_CODE": 200
+            "STATUS_CODE": 200
         }
         return jsonify(d), 200
 

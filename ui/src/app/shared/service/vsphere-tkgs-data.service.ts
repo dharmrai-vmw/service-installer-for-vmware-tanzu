@@ -139,7 +139,15 @@ export  class VsphereTkgsService {
     //Additional volumes
     private tkgsControlVolumes = new BehaviorSubject(new Map<string, string>());
     private tkgsWorkerVolumes = new BehaviorSubject(new Map<string, string>());
-    // VELERO fields
+    // Offline Velero Fields
+    private wrkEnableVelero = new BehaviorSubject<boolean>(false);
+    private wrkVeleroBucketName = new BehaviorSubject('');
+    private wrkVeleroUsername = new BehaviorSubject('');
+    private wrkVeleroPassword = new BehaviorSubject('');
+    private wrkVeleroRegion = new BehaviorSubject('');
+    private wrkVeleroS3Url = new BehaviorSubject('');
+    private wrkVeleroPublicUrl = new BehaviorSubject('');
+    // VELERO via TMC fields
     private wrkEnableDataProtection = new BehaviorSubject<boolean>(false);
     private wrkClusterGroupName = new BehaviorSubject('');
     private wrkDataProtectionCreds = new BehaviorSubject('');
@@ -314,11 +322,19 @@ export  class VsphereTkgsService {
     //Additional volumes
     currentTkgsControlVolumes = this.tkgsControlVolumes.asObservable();
     currentTkgsWorkerVolumes = this.tkgsWorkerVolumes.asObservable();
-    // VELERO FIELDS
+    // VELERO via TMC FIELDS
     currentWrkClusterGroupName = this.wrkClusterGroupName.asObservable();
     currentWrkEnableDataProtection = this.wrkEnableDataProtection.asObservable();
     currentWrkDataProtectionCreds = this.wrkDataProtectionCreds.asObservable();
     currentWrkDataProtectionTargetLocation = this.wrkDataProtectionTargetLocation.asObservable();
+    // Offline Velero Fields
+    currentWrkEnableVelero = this.wrkEnableVelero.asObservable();
+    currentWrkVeleroBucketName = this.wrkVeleroBucketName.asObservable();
+    currentWrkVeleroUsername = this.wrkVeleroUsername.asObservable();
+    currentWrkVeleroPassword = this.wrkVeleroPassword.asObservable();
+    currentWrkVeleroRegion = this.wrkVeleroRegion.asObservable();
+    currentWrkVeleroS3Url = this.wrkVeleroS3Url.asObservable();
+    currentWrkVeleroPublicUrl = this.wrkVeleroPublicUrl.asObservable();
     //Harbor
     currentEnableHarbor = this.enableHarbor.asObservable();
     currentHarborFqdn = this.harborFqdn.asObservable();
@@ -544,7 +560,7 @@ export  class VsphereTkgsService {
         this.controlPlaneSize.next(controlPlaneSize);
     }
     // Content Library
-    changeContentLibrary(subscribedContentLib: string) {
+    changeSubsContentLibrary(subscribedContentLib: string) {
         this.subscribedContentLib.next(subscribedContentLib);
     }
     // Storage Policy
@@ -673,7 +689,7 @@ export  class VsphereTkgsService {
     changeTkgsWorkerVolumes(tkgsWorkerVolumes: any) {
         this.tkgsWorkerVolumes.next(tkgsWorkerVolumes);
     }
-    // VELERO FIELDS
+    // VELERO via TMC FIELDS
     changeWrkClusterGroupName(grp: string) {
         this.wrkClusterGroupName.next(grp);
     }
@@ -685,6 +701,28 @@ export  class VsphereTkgsService {
     }
     changeWrkDataProtectionTargetLocation(location: string) {
         this.wrkDataProtectionTargetLocation.next(location);
+    }
+    // Offline Velero Fields
+    changeWrkEnableVelero(enable: boolean) {
+        this.wrkEnableVelero.next(enable);
+    }
+    changeWrkVeleroBucketName(bucket: string) {
+        this.wrkVeleroBucketName.next(bucket);
+    }
+    changeWrkVeleroUsername(username: string) {
+        this.wrkVeleroUsername.next(username);
+    }
+    changeWrkVeleroPassword(password: string) {
+        this.wrkVeleroPassword.next(password);
+    }
+    changeWrkVeleroRegion(region: string) {
+        this.wrkVeleroRegion.next(region);
+    }
+    changeWrkVeleroS3Url(s3Url: string) {
+        this.wrkVeleroS3Url.next(s3Url);
+    }
+    changeWrkVeleroPublicUrl(publicUrl: string) {
+        this.wrkVeleroPublicUrl.next(publicUrl);
     }
     //TSM
     changeEnableTSM(enableTSM: boolean) {

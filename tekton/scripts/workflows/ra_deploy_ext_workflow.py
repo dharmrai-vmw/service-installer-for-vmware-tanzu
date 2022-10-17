@@ -104,10 +104,10 @@ class RaDeployExtWorkflow:
                         logginglistOfExtention.append(Tkg_Extention_names.FLUENT_BIT_KAFKA)
                         
                 else:
-                    logger.info("Tanzu logging extensions deploy is disabled, no extensions will be deployed")
+                    logger.info("Tanzu logging extensions deploy is deactivated, no extensions will be deployed")
                     d = {
                         "responseType": "SUCCESS",
-                        "msg": "Tanzu extensions  deploy is disabled, no extensions will be deployed",
+                        "msg": "Tanzu extensions  deploy is deactivated, no extensions will be deployed",
                         "ERROR_CODE": 200
                     }
                     return json.dumps(d), 200
