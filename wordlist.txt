@@ -109,3 +109,4 @@ truststore
 OVHcloud
 precheck
 pingable
+Keycloak
