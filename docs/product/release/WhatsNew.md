@@ -10,6 +10,7 @@
 - Custom certificates for Tanzu Kubernetes Grid can now be imported through Service Installer.
 - Support for proxy-based deployments on Tanzu with VMware VDS environments.
 - Support for providing configured subscribed content library for Tanzu on VMware deployments through Service Installer UI.
+- Support for building Tanzu Application Platform 1.2 multicluster instances on AWS EKS that correspond to the [Tanzu Application Platform Reference Design](https://docs.vmware.com/en/VMware-Tanzu-Application-Platform/1.2/tap-reference-architecture/GUID-reference-designs-index-tap.html).
 - Harbor enhancements:
   
   - Removed dependency on DHCP for Service Installer build with Harbor. DHCP is no longer a mandatory requirement.
