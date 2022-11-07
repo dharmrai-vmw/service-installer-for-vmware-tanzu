@@ -110,3 +110,4 @@ OVHcloud
 precheck
 pingable
 Keycloak
+multicluster
