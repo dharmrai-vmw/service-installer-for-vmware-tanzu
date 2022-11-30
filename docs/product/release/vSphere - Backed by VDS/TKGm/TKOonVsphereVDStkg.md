@@ -14,15 +14,21 @@ Before you deploy Tanzu for Kubernetes Operations using Service Installer for VM
 -  You have created the following port groups:
     -   Management port group/NSX Advanced Load Balancer management: You will connect the VMware NSX Advanced Load Balancer Controller and an interface of NSX Advanced Load Balancer Service Engines (SEs) to this port group.
     -   Tanzu Kubernetes Grid management: The bootstrap VM, Tanzu Kubernetes Grid management cluster nodes, Tanzu Kubernetes Grid shared services cluster, and an interface of NSX Advanced Load Balancer SEs part of SE Group 01 will be connected to this port group.
-    -   Tanzu Kubernetes Grid management Data/VIP: All Kubernetes load balancer services are exposed to the external network through this network. Only Tanzu Kubernetes Grid shared services clusters use this network. An interface of NSX Advanced Load Balancer SEs part of SE Group 01 will be connected to this port groups.  
+    -   Tanzu Kubernetes Grid management data/VIP: All Kubernetes load balancer services are exposed to the external network through this network. Only Tanzu Kubernetes Grid shared services clusters use this network. An interface of NSX Advanced Load Balancer SEs part of SE Group 01 will be connected to this port groups.  
 
         IPAM of this network is handled by NSX Advanced Load Balancer and IP addresses are assigned to both VIPs and SEs.
 
     -   Tanzu Kubernetes Grid workload cluster: Tanzu Kubernetes Grid workload cluster nodes and an interface of NSX Advanced Load Balancer SEs part of SE Group 02 are connected to this port group.
 
+    -   Tanzu Kubernetes Grid cluster data/VIP: Virtual services for control plane HA of all TKG clusters (management, shared service, and workload).
+
+        Reserve sufficient IP addresses depending on the number of Tanzu Kubernetes Grid clusters planned to be deployed in the environment. NSX Advanced Load Balancer takes care of IPAM on this network.
+    
     -   Tanzu Kubernetes Grid workload data/VIP: All Kubernetes load balancer services are exposed to the external network through this network. Multiple workload clusters can make use of this group.  
 
         NSX Advanced Load Balancer handles the IPAM of this network. The IP addresses are assigned to both VIPs and SEs.
+        
+        
 
 - DHCP service is available on the following networks. The networks must have external access to the Internet.
 
