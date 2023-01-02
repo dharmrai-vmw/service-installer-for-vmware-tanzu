@@ -72,12 +72,3 @@ For the download location, see [Release Notes](WhatsNew.md).
 |  | Day0 | Day2 | 
 | Internet |  TKG 1.5.3, <br>TKG 1.5.4 |  TKG 1.5.3 -> 1.5.4 | 
 | Air-gapped  | TKG 1.5.3, <br>TKG 1.5.4 |  TKG 1.5.3 -> 1.5.4 |
-
-## Documentation
-<!-- - What's new in this release: [What's New](./WhatsNew.md)./-->
-Instructions to run the Service Installer for VMware Tanzu for Kubernetes Operations:
-
-- [Deploying VMware Tanzu for Kubernetes Operations on VMware Cloud on AWS Using Service Installer for VMware Tanzu](./VMware%20Cloud%20on%20AWS%20-%20VMC/TKOonVMConAWS.md).
-- [Deploying VMware Tanzu for Kubernetes Operations on vSphere with NSX-T Using Service Installer for VMware Tanzu](./vSphere%20-%20Backed%20by%20NSX-T/tkoVsphereNSXT.md).
-- [Deploying VMware Tanzu for Kubernetes Operations on vSphere with vSphere Distributed Switch Using Service Installer for VMware Tanzu](./vSphere%20-%20Backed%20by%20VDS/TKGm/TKOonVsphereVDStkg.md).
-- [Deploying VMware Tanzu for Kubernetes Operations on vSphere with Tanzu and vSphere Distributed Switch Using Service Installer for VMware Tanzu](./vSphere%20-%20Backed%20by%20VDS/TKGs/TKOonVsphereVDStkgs.md).
