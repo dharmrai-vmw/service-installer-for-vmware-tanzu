@@ -13,7 +13,7 @@ To summarize, a fully functional VMware Cloud Director environment is required w
 
 The following table provides the component versions.
 
-| **Component**                   | **Version**        |
+| **Component** | **Version** |
 |---|---|
 | VMware Cloud Director       | 10.4 and later |
 | Container Service Extension | 4.0            |
@@ -22,24 +22,24 @@ The following table provides the component versions.
 
 ## Firewall Requirements
 
-| **Source**                              | **Destination**                                                                   | **Port**             | **Description**                                                                                                                                                      |   |
-|---|---|---|---|---|
-| CSE Server                          | VCD                                                               | TCP: 443         | VCD Public API Address                                                                                                                               |   |
-| CSE Server                          | DNS                                                                           | UDP:53           | Core Service: Allow components to look up machine addresses                                                                                                      |   |
-| Tenant Org Network*                 | Internet                                                                      | TCP:443 TCP:6443 | Download Tanzu binaries from VMware Public Image Repository                                                                                                      |   |
-| Tenant Org Network*                 | VCD                                                               | TCP:443          | CSI/CCM (CPI) to communicate with VCD to create required objects in VCD (Load balancer, PVs, etc.) CCM: Cloud Controller Manager CSI: Container Storage Interface |   |
-| Tenant Org Network*                 | DNS                                                                           | UDP:53           | Core Service: Allow components to look up machine addresses                                                                                                      |   |
-| Tenant Org Network*                 | NTP                                                                           | UDP:123          | Core Service: Allow components to sync the current time                                                                                                          |   |
-| NSX ALB Controllers and Cluster VIP | vCenter                                                                       | TCP:443          | Allow AVI to discover vCenter objects and deploy SEs as required                                                                                                 |   |
-| NSX ALB Controllers                 | ESXi Hosts                                                                    | TCP:443          | Management access for Service Engine Creation                                                                                                                    |   |
-| NSX ALB Controllers and Cluster VIP | NSX-T Manager (Workload Domain)                                               | TCP:443          | NSX-T Cloud Integration and discover NSX-T objects                                                                                                               |   |
-| NSX ALB Controllers                 | DNS                                                                           | UDP:53           | Core Service: Allow components to look up machine addresses                                                                                                      |   |
-| NSX ALB Controllers                 | NTP                                                                           | UDP:123          | Core Service: Allow components to sync the current time                                                                                                          |   |
-| NSX ALB Service Engine Mgmt Network | AVI Controllers                                                               | TCP:8443         | Secure channel for key exchange                                                                                                                                  |   |
-| NSX ALB Service Engine Mgmt Network | AVI Controllers                                                               | TCP:22           | Secure channel for communication between NSX ALB components for configuration sync, metrics and logs transfer, heartbeats, and other management processes        |   |
-| AVI Service Engine Mgmt Network     | AVI Controllers                                                               | UDP:123          | Core Service: Allow components to sync the current time                                                                                                          |   |
-| SIVT OVA                            | VCD Management vCenter Workload vCenter NSX-T NSX ALB Controllers | TCP:443          | Configure all required components as per the Architecture                                                                                                        |   |
-| SIVT OVA                            | DNS NTP                                                                       | UDP:53 UDP:123   | Core Service: Allow components to look up machine addresses Core Service: Allow components to sync the current time                                              |   |
+| **Source** | **Destination** | **Port** | **Description** |
+|---|---|---|---|
+| CSE Server                          | VCD                                                               | TCP: 443         | VCD Public API Address |
+| CSE Server                          | DNS                                                                           | UDP:53           | Core Service: Allow components to look up machine addresses |
+| Tenant Org Network*                 | Internet                                                                      | TCP:443 TCP:6443 | Download Tanzu binaries from VMware Public Image Repository |
+| Tenant Org Network*                 | VCD                                                               | TCP:443          | CSI/CCM (CPI) to communicate with VCD to create required objects in VCD (Load balancer, PVs, etc.) CCM: Cloud Controller Manager CSI: Container Storage Interface |
+| Tenant Org Network*                 | DNS                                                                           | UDP:53           | Core Service: Allow components to look up machine addresses |
+| Tenant Org Network*                 | NTP                                                                           | UDP:123          | Core Service: Allow components to sync the current time |
+| NSX ALB Controllers and Cluster VIP | vCenter                                                                       | TCP:443          | Allow AVI to discover vCenter objects and deploy SEs as required |
+| NSX ALB Controllers                 | ESXi Hosts                                                                    | TCP:443          | Management access for Service Engine Creation |
+| NSX ALB Controllers and Cluster VIP | NSX-T Manager (Workload Domain)                                               | TCP:443          | NSX-T Cloud Integration and discover NSX-T objects |
+| NSX ALB Controllers                 | DNS                                                                           | UDP:53           | Core Service: Allow components to look up machine addresses |
+| NSX ALB Controllers                 | NTP                                                                           | UDP:123          | Core Service: Allow components to sync the current time |
+| NSX ALB Service Engine Mgmt Network | AVI Controllers                                                               | TCP:8443         | Secure channel for key exchange |
+| NSX ALB Service Engine Mgmt Network | AVI Controllers                                                               | TCP:22           | Secure channel for communication between NSX ALB components for configuration sync, metrics and logs transfer, heartbeats, and other management processes |
+| AVI Service Engine Mgmt Network     | AVI Controllers                                                               | UDP:123          | Core Service: Allow components to sync the current time |
+| SIVT OVA                            | VCD Management vCenter Workload vCenter NSX-T NSX ALB Controllers | TCP:443          | Configure all required components as per the Architecture |
+| SIVT OVA                            | DNS NTP                                                                       | UDP:53 UDP:123   | Core Service: Allow components to look up machine addresses Core Service: Allow components to sync the current time |
 
 ## Tanzu for Kubernetes Operations on VMware Cloud Director with Container Service Extension Reference Architecture
 
