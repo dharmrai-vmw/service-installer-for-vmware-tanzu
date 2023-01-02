@@ -10,4 +10,4 @@ This is the table of contents for the Service Installer for VMware Tanzu Documen
 - [Deploying VMware Tanzu for Kubernetes Operations on vSphere with Tanzu and vSphere Distributed Switch Using Service Installer for VMware Tanzu](./vSphere%20-%20Backed%20by%20VDS/TKGs/TKOonVsphereVDStkgs.md)
 - [Deploying Tanzu for Kubernetes Operations on Federal Air-gapped AWS VPC Using Service Installer for VMware Tanzu](./AWS%20-%20Federal%20Airgap/AWSFederalAirgap-DeploymentGuide.md)
 - [Deploying Tanzu for Kubernetes Operations on Non Air-gapped AWS VPC Using Service Installer for VMware Tanzu](./AWS%20-%20Non%20Airgap/AWSNonAirgap-DeploymentGuide.md)
-  
+- [Deploying VMware Tanzu for Kubernetes Operations on VMware Cloud Director Using Service Installer for VMware Tanzu](./VMware%20Cloud%20Director/VCD-CSE.md)
